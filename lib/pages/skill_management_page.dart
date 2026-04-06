@@ -42,15 +42,54 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
   }
 
   Future<void> _loadSkills() async {
-    final List<Skill> all =
-        await _skillService.getInstalledSkillsForAgent(widget.selectedAgent.id);
-    if (!mounted) {
-      return;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+      });
     }
-    setState(() {
-      _skills = all;
-      _loading = false;
-    });
+    try {
+      final List<Skill> all =
+          await _skillService.getInstalledSkillsForAgent(widget.selectedAgent.id);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _skills = all;
+        _loading = false;
+      });
+    } on SkillPermissionException catch (err) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _skills = <Skill>[];
+        _loading = false;
+      });
+      final String deniedHint =
+          err.deniedPaths.isEmpty ? '' : '\n受限路径：${err.deniedPaths.first}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '无法读取 ${widget.selectedAgent.displayName} 的 Skill 列表：权限不足。'
+            '请在系统设置中为应用授权“文件与文件夹”或“完全磁盘访问”，然后点击刷新。$deniedHint',
+          ),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _skills = <Skill>[];
+        _loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('读取 ${widget.selectedAgent.displayName} Skill 列表失败，请稍后重试。'),
+        ),
+      );
+    }
   }
 
   @override
@@ -58,56 +97,28 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _InlineAgentFilterBar(
-          agents: widget.agents,
-          selectedIndex: widget.selectedAgentIndex,
-          onChanged: widget.onAgentChanged,
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: Theme.of(context).colorScheme.surfaceContainerLowest,
-            border: Border.all(
-              color: Theme.of(context)
-                  .colorScheme
-                  .outlineVariant
-                  .withValues(alpha: 0.45),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: _InlineAgentFilterBar(
+                agents: widget.agents,
+                selectedIndex: widget.selectedAgentIndex,
+                onChanged: widget.onAgentChanged,
+              ),
             ),
-          ),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Skill 管理 · ${widget.selectedAgent.displayName}',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '自动读取本地目录并合并展示已安装清单',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _onUploadInstall,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('上传安装'),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: '刷新',
-                onPressed: _loadSkills,
-                icon: const Icon(Icons.refresh),
-              ),
-            ],
-          ),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              tooltip: '上传安装',
+              onPressed: _onUploadInstall,
+              icon: const Icon(Icons.upload_file),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: '刷新',
+              onPressed: _loadSkills,
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Row(
@@ -156,9 +167,9 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                               spacing: 8,
                               children: <Widget>[
                                 IconButton(
-                                  tooltip: '编辑',
-                                  onPressed: readOnly ? null : () => _onEdit(skill),
-                                  icon: const Icon(Icons.edit_outlined),
+                                  tooltip: '查看',
+                                  onPressed: () => _onView(skill),
+                                  icon: const Icon(Icons.visibility_outlined),
                                 ),
                                 IconButton(
                                   tooltip: '删除',
@@ -219,16 +230,11 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     );
   }
 
-  Future<void> _onEdit(Skill skill) async {
-    final Skill? updated = await showDialog<Skill>(
+  Future<void> _onView(Skill skill) async {
+    await showDialog<void>(
       context: context,
-      builder: (BuildContext context) => _SkillEditDialog(skill: skill),
+      builder: (BuildContext context) => _SkillDetailDialog(skill: skill),
     );
-    if (updated == null) {
-      return;
-    }
-    await _skillService.updateSkill(updated);
-    await _loadSkills();
   }
 }
 
@@ -323,81 +329,72 @@ class _InlineAgentFilterBar extends StatelessWidget {
   }
 }
 
-class _SkillEditDialog extends StatefulWidget {
-  const _SkillEditDialog({required this.skill});
+class _SkillDetailDialog extends StatelessWidget {
+  const _SkillDetailDialog({required this.skill});
 
   final Skill skill;
 
   @override
-  State<_SkillEditDialog> createState() => _SkillEditDialogState();
-}
-
-class _SkillEditDialogState extends State<_SkillEditDialog> {
-  late final TextEditingController _nameController;
-  late final TextEditingController _versionController;
-  late final TextEditingController _descriptionController;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.skill.name);
-    _versionController = TextEditingController(text: widget.skill.version);
-    _descriptionController =
-        TextEditingController(text: widget.skill.description);
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _versionController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final String tags = skill.tags.isEmpty ? '无' : skill.tags.join(', ');
     return AlertDialog(
-      title: const Text('编辑 Skill'),
+      title: const Text('Skill 详情'),
       content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: '名称'),
-            ),
-            TextField(
-              controller: _versionController,
-              decoration: const InputDecoration(labelText: '版本'),
-            ),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(labelText: '描述'),
-              maxLines: 2,
-            ),
-          ],
+        width: 460,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _SkillDetailRow(label: '名称', value: skill.name),
+              _SkillDetailRow(label: '版本', value: skill.version),
+              _SkillDetailRow(label: '描述', value: skill.description),
+              _SkillDetailRow(label: '作者', value: skill.author),
+              _SkillDetailRow(label: '来源', value: skill.source),
+              _SkillDetailRow(label: 'Agent', value: skill.agentId),
+              _SkillDetailRow(label: '安装路径', value: skill.installedPath ?? '无'),
+              _SkillDetailRow(label: '标签', value: tags),
+            ],
+          ),
         ),
       ),
       actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
-        ),
         FilledButton(
-          onPressed: () {
-            Navigator.pop(
-              context,
-              widget.skill.copyWith(
-                name: _nameController.text.trim(),
-                version: _versionController.text.trim(),
-                description: _descriptionController.text.trim(),
-              ),
-            );
-          },
-          child: const Text('保存'),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('关闭'),
         ),
       ],
+    );
+  }
+}
+
+class _SkillDetailRow extends StatelessWidget {
+  const _SkillDetailRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            value.trim().isEmpty ? '无' : value.trim(),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
     );
   }
 }

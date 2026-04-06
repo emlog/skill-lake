@@ -9,6 +9,21 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/skill.dart';
 
+class SkillPermissionException implements Exception {
+  const SkillPermissionException({
+    required this.agentId,
+    required this.deniedPaths,
+  });
+
+  final String agentId;
+  final List<String> deniedPaths;
+
+  @override
+  String toString() {
+    return 'SkillPermissionException(agentId: $agentId, deniedPaths: $deniedPaths)';
+  }
+}
+
 class SkillService {
   static const String _indexFileName = 'skills.json';
 
@@ -241,13 +256,18 @@ class SkillService {
   }
 
   Future<List<Skill>> _discoverSkillsForAgent(String agentId) async {
-    final String? home = Platform.environment['HOME'];
-    if (home == null || home.isEmpty) {
+    final List<String> homeCandidates = _homeCandidates();
+    if (homeCandidates.isEmpty) {
       return <Skill>[];
     }
 
-    final List<String> roots = _discoveryRoots(home)[agentId] ?? const <String>[];
+    final Set<String> roots = <String>{};
+    for (final String home in homeCandidates) {
+      roots.addAll(_discoveryRoots(home)[agentId] ?? const <String>[]);
+    }
+
     final List<Skill> discovered = <Skill>[];
+    final Set<String> permissionDeniedPaths = <String>{};
 
     for (final String root in roots) {
       final Directory dir = Directory(root);
@@ -256,7 +276,10 @@ class SkillService {
       }
 
       // Priority: top-level subdirectories are treated as installed skills.
-      final List<Directory> directDirs = await _listDirsSafe(dir);
+      final List<Directory> directDirs = await _listDirsSafe(
+        dir,
+        permissionDeniedPaths: permissionDeniedPaths,
+      );
       for (final Directory child in directDirs) {
         final String basename = _baseName(child.path);
         if (basename.isEmpty || basename.startsWith('.')) {
@@ -279,6 +302,7 @@ class SkillService {
       final Set<String> candidateDirs = await _collectCandidateSkillDirs(
         root: dir,
         maxDepth: 4,
+        permissionDeniedPaths: permissionDeniedPaths,
       );
       for (final String path in candidateDirs) {
         final String base = _baseName(path);
@@ -299,7 +323,10 @@ class SkillService {
         );
       }
 
-      final List<File> rootFiles = await _listFilesSafe(dir);
+      final List<File> rootFiles = await _listFilesSafe(
+        dir,
+        permissionDeniedPaths: permissionDeniedPaths,
+      );
       for (final File file in rootFiles) {
         if (!_isSkillFile(file.path)) {
           continue;
@@ -323,7 +350,28 @@ class SkillService {
       }
     }
 
+    if (discovered.isEmpty && permissionDeniedPaths.isNotEmpty) {
+      throw SkillPermissionException(
+        agentId: agentId,
+        deniedPaths: permissionDeniedPaths.toList()..sort(),
+      );
+    }
+
     return discovered;
+  }
+
+  List<String> _homeCandidates() {
+    final Set<String> homes = <String>{};
+    final String? envHome = Platform.environment['HOME'];
+    if (envHome != null && envHome.trim().isNotEmpty) {
+      homes.add(envHome.trim());
+    }
+
+    final String? user = Platform.environment['USER'];
+    if (user != null && user.trim().isNotEmpty) {
+      homes.add('/Users/${user.trim()}');
+    }
+    return homes.toList();
   }
 
   Map<String, List<String>> _discoveryRoots(String home) {
@@ -353,6 +401,7 @@ class SkillService {
   Future<Set<String>> _collectCandidateSkillDirs({
     required Directory root,
     required int maxDepth,
+    required Set<String> permissionDeniedPaths,
   }) async {
     final Set<String> candidates = <String>{};
     final Set<String> visited = <String>{};
@@ -368,8 +417,14 @@ class SkillService {
       }
       visited.add(normalized);
 
-      final List<Directory> childDirs = await _listDirsSafe(current.dir);
-      final List<File> files = await _listFilesSafe(current.dir);
+      final List<Directory> childDirs = await _listDirsSafe(
+        current.dir,
+        permissionDeniedPaths: permissionDeniedPaths,
+      );
+      final List<File> files = await _listFilesSafe(
+        current.dir,
+        permissionDeniedPaths: permissionDeniedPaths,
+      );
       final bool hasSkillLikeFile = files.any((File f) => _isSkillFile(f.path));
       final bool hasManifest = files.any((File f) {
         final String name = _baseName(f.path).toLowerCase();
@@ -403,7 +458,10 @@ class SkillService {
     return candidates;
   }
 
-  Future<List<Directory>> _listDirsSafe(Directory dir) async {
+  Future<List<Directory>> _listDirsSafe(
+    Directory dir, {
+    required Set<String> permissionDeniedPaths,
+  }) async {
     final List<Directory> results = <Directory>[];
     try {
       await for (final FileSystemEntity entity
@@ -418,13 +476,19 @@ class SkillService {
           }
         }
       }
-    } catch (_) {
+    } catch (err) {
+      if (_isPermissionDeniedError(err)) {
+        permissionDeniedPaths.add(dir.path);
+      }
       // Ignore directory listing errors and continue scanning other paths.
     }
     return results;
   }
 
-  Future<List<File>> _listFilesSafe(Directory dir) async {
+  Future<List<File>> _listFilesSafe(
+    Directory dir, {
+    required Set<String> permissionDeniedPaths,
+  }) async {
     final List<File> results = <File>[];
     try {
       await for (final FileSystemEntity entity
@@ -433,10 +497,29 @@ class SkillService {
           results.add(entity);
         }
       }
-    } catch (_) {
+    } catch (err) {
+      if (_isPermissionDeniedError(err)) {
+        permissionDeniedPaths.add(dir.path);
+      }
       // Ignore directory listing errors and continue scanning other paths.
     }
     return results;
+  }
+
+  bool _isPermissionDeniedError(Object error) {
+    if (error is! FileSystemException) {
+      return false;
+    }
+    final int? code = error.osError?.errorCode;
+    if (code == 1 || code == 13) {
+      return true;
+    }
+    final String msg = error.message.toLowerCase();
+    final String osMsg = (error.osError?.message ?? '').toLowerCase();
+    return msg.contains('permission denied') ||
+        msg.contains('operation not permitted') ||
+        osMsg.contains('permission denied') ||
+        osMsg.contains('operation not permitted');
   }
 
   String _baseName(String path) {
