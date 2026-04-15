@@ -156,9 +156,9 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (BuildContext context, int index) {
                         final Skill skill = _skills[index];
-                        // 仅原始自动发现的技能（本地扫描出的）设为只读。
-                        // 同步过来的技能（sync: 开头）或安装的技能（upload/http）均可删除/移除。
-                        final bool readOnly = skill.source.startsWith('auto:');
+                        // 有 installedPath 即可删除（不区分 auto/sync/upload）
+                        final bool canDelete =
+                            skill.installedPath?.isNotEmpty == true;
                         final ColorScheme color = Theme.of(context).colorScheme;
                         return Card(
                           child: ListTile(
@@ -170,9 +170,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                               radius: 18,
                               backgroundColor: color.primaryContainer,
                               child: Icon(
-                                readOnly
-                                    ? Icons.folder_open_outlined
-                                    : Icons.extension_outlined,
+                                Icons.extension_outlined,
                                 size: 18,
                                 color: color.onPrimaryContainer,
                               ),
@@ -194,7 +192,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                                 IconButton(
                                   tooltip: '删除',
                                   onPressed:
-                                      readOnly ? null : () => _onDelete(skill),
+                                      canDelete ? () => _onDelete(skill) : null,
                                   icon: const Icon(Icons.delete_outline),
                                 ),
                               ],
@@ -273,15 +271,25 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     }
   }
 
+  /// 删除 Skill：物理删除对应文件夹，成功后刷新列表。
   Future<void> _onDelete(Skill skill) async {
-    await _skillService.deleteSkill(skill.id);
-    await _loadSkills();
-    if (!mounted) {
-      return;
+    try {
+      await _skillService.deleteSkill(skill);
+      await _loadSkills();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已删除：${skill.name}')),
+      );
+    } catch (err) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败：$err')),
+      );
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已删除：${skill.name}')),
-    );
   }
 
   Future<void> _onView(Skill skill) async {

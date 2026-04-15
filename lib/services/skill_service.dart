@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -9,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/skill.dart';
 
+/// Skill 操作权限异常：当读取某个 Agent 目录时遭遇系统权限拒绝时抛出。
 class SkillPermissionException implements Exception {
   const SkillPermissionException({
     required this.agentId,
@@ -24,88 +24,23 @@ class SkillPermissionException implements Exception {
   }
 }
 
+/// Skill 管理服务。
+///
+/// 采用纯文件系统模式：
+/// - 不维护任何本地索引（skills.json 已废弃）。
+/// - 所有列表操作均为实时扫描发现根目录。
+/// - 删除操作直接物理删除 Skill 文件夹。
+/// - 安装操作将 Skill 文件夹写入 Agent 的首选发现根目录，刷新后即可发现。
 class SkillService {
-  static const String _indexFileName = 'skills.json';
-
-  /// 获取指定 Agent 的全部已安装 Skill（索引 + 自动发现）。
-  ///
-  /// 合并规则：
-  /// - 先获取自动发现的 Skill（以文件系统为唯一真相）。
-  /// - 再从索引中读取属于该 Agent 的记录，**仅保留** installedPath
-  ///   确实位于该 Agent 自己 discovery roots 下的记录，防止旧的错误同步
-  ///   记录（installedPath 指向其他 Agent 目录）污染列表。
-  /// - 以 fingerprint（agentId:name:path）去重后合并。
+  /// 获取指定 Agent 的全部已安装 Skill（实时扫描文件系统，无缓存）。
   Future<List<Skill>> getInstalledSkillsForAgent(String agentId) async {
-    final List<Skill> discovered = await _discoverSkillsForAgent(agentId);
-    final List<Skill> indexed = await _getIndexedSkillsForAgent(agentId);
-
-    // 构建该 Agent 允许的合法路径前缀集合
-    final List<String> homes = _homeCandidates();
-    final Set<String> validRoots = <String>{};
-    for (final String home in homes) {
-      validRoots.addAll(_discoveryRoots(home)[agentId] ?? const <String>[]);
-    }
-
-    // 过滤索引记录：installedPath 必须以该 Agent 的某个 root 开头
-    // 路径为空或指向其他 Agent 目录的旧记录直接丢弃
-    final List<Skill> validIndexed = indexed.where((Skill s) {
-      final String? path = s.installedPath;
-      if (path == null || path.isEmpty) return false;
-      return validRoots.any((String root) => path.startsWith(root));
-    }).toList();
-
-    final Map<String, Skill> merged = <String, Skill>{};
-    for (final Skill skill in validIndexed) {
-      merged[_fingerprint(skill)] = skill;
-    }
-    for (final Skill skill in discovered) {
-      merged.putIfAbsent(_fingerprint(skill), () => skill);
-    }
-    final List<Skill> result = merged.values.toList()
-      ..sort((Skill a, Skill b) => a.name.compareTo(b.name));
-    return result;
+    return _discoverSkillsForAgent(agentId);
   }
 
-  Future<List<Skill>> _getIndexedSkillsForAgent(String agentId) async {
-    final File file = await _getIndexFile();
-    if (!await file.exists()) {
-      return <Skill>[];
-    }
-
-    final String raw = await file.readAsString();
-    if (raw.trim().isEmpty) {
-      return <Skill>[];
-    }
-
-    final List<dynamic> data = json.decode(raw) as List<dynamic>;
-    return data
-        .map((dynamic e) => Skill.fromMap(e as Map<String, dynamic>))
-        .where((Skill skill) => skill.agentId == agentId)
-        .toList();
-  }
-
-  Future<List<Skill>> getIndexedSkills() async {
-    final File file = await _getIndexFile();
-    if (!await file.exists()) {
-      return <Skill>[];
-    }
-    final String raw = await file.readAsString();
-    if (raw.trim().isEmpty) {
-      return <Skill>[];
-    }
-    final List<dynamic> data = json.decode(raw) as List<dynamic>;
-    return data
-        .map((dynamic e) => Skill.fromMap(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  Future<void> saveSkills(List<Skill> skills) async {
-    final File file = await _getIndexFile();
-    final String content =
-        json.encode(skills.map((Skill e) => e.toMap()).toList());
-    await file.writeAsString(content);
-  }
-
+  /// 通过文件选择器上传并安装 Skill（仅支持 .zip）。
+  ///
+  /// 安装目标为该 Agent 的首选发现根目录（[_primaryDiscoveryRoot]），
+  /// 安装完成后刷新即可从文件系统自动发现。
   Future<Skill?> installFromUpload({
     required String agentId,
   }) async {
@@ -122,41 +57,16 @@ class SkillService {
     }
 
     final String inputPath = picked.path!;
-    final File source = File(inputPath);
     final String ext = inputPath.split('.').last.toLowerCase();
 
-    if (ext != 'zip' && ext != 'json') {
-      throw Exception('仅支持 .zip 或 .json 文件');
+    if (ext != 'zip') {
+      throw Exception('仅支持 .zip 文件');
     }
 
-    if (ext == 'zip') {
-      return _installFromZip(
-        source,
-        sourcePathLabel: 'upload',
-        agentId: agentId,
-      );
-    }
-
-    if (ext == 'json') {
-      final Skill parsed =
-          Skill.fromJson(await source.readAsString()).copyWith(agentId: agentId);
-      return _persistSkill(parsed, sourcePath: inputPath);
-    }
-
-    return _persistSkill(
-      Skill(
-        id: _genId(source.uri.pathSegments.last),
-        agentId: agentId,
-        name: source.uri.pathSegments.last,
-        version: '0.0.1',
-        description: 'Imported from local file',
-        author: 'unknown',
-        source: 'upload',
-      ),
-      sourcePath: inputPath,
-    );
+    return _installFromZip(File(inputPath), agentId: agentId);
   }
 
+  /// 从商店 URL 下载 zip 并安装 Skill 到 Agent 的首选发现根目录。
   Future<Skill> installFromStore({
     required String zipUrl,
     required Skill metadata,
@@ -173,55 +83,32 @@ class SkillService {
 
     return _installFromZip(
       zipFile,
-      sourcePathLabel: zipUrl,
-      metadata: metadata.copyWith(agentId: agentId),
       agentId: agentId,
+      preferredName: metadata.id,
     );
   }
 
-  Future<void> deleteSkill(String skillId) async {
-    final List<Skill> all = await getIndexedSkills();
-    final int index = all.indexWhere((Skill s) => s.id == skillId);
-    if (index == -1) {
-      return;
+  /// 删除 Skill：物理删除 [skill.installedPath] 对应的文件夹。
+  ///
+  /// 若路径为空或不存在则抛出异常，调用方应处理该异常。
+  Future<void> deleteSkill(Skill skill) async {
+    final String? path = skill.installedPath;
+    if (path == null || path.isEmpty) {
+      throw Exception('Skill「${skill.name}」没有有效的安装路径，无法删除');
     }
-    final Skill target = all[index];
-
-    // 安全保护：仅删除 upload 或 store 类型的技能文件夹。
-    // auto 或 sync 类型的技能路径指向的是外部或共享目录，仅移除索引记录，不触发物理删除。
-    final String source = target.source.toLowerCase();
-    final bool isPrivateFolder =
-        source.contains('upload') || source.contains('http');
-
-    if (isPrivateFolder && target.installedPath != null) {
-      final Directory dir = Directory(target.installedPath!);
-      if (await dir.exists()) {
-        await dir.delete(recursive: true);
-      }
+    final Directory dir = Directory(path);
+    if (await dir.exists()) {
+      await dir.delete(recursive: true);
     }
-
-    all.removeAt(index);
-    await saveSkills(all);
-  }
-
-  Future<void> updateSkill(Skill updated) async {
-    final List<Skill> all = await getIndexedSkills();
-    final int index = all.indexWhere((Skill s) => s.id == updated.id);
-    if (index == -1) {
-      throw Exception('Skill not found: ${updated.id}');
-    }
-    all[index] = updated;
-    await saveSkills(all);
   }
 
   /// 将默认 Agent（[defaultAgentId]）的所有 Skill 文件夹**物理复制**到目标 Agent（[targetAgentId]）的首选目录。
   ///
   /// 同步规则：
-  /// 1. 读取默认 Agent 的所有发现根目录，扫描包含 SKILL.md 的一级子目录。
-  /// 2. 确定目标 Agent 的首选存放目录（[_primaryDiscoveryRoot]），不存在则自动创建。
-  /// 3. 将每个 Skill 子文件夹**递归复制**到目标目录；同名则先删除旧文件夹再覆盖。
-  /// 4. 复制完成后更新索引记录（source 标记为 sync:<defaultAgentId>）。
-  /// 5. 目标 Agent 不能是默认 Agent 本身。
+  /// 1. 扫描默认 Agent 的发现根目录，找到所有含 SKILL.md 的一级子目录。
+  /// 2. 将每个 Skill 文件夹递归复制到目标 Agent 的首选发现根目录。
+  /// 3. 同名则先删除旧文件夹再覆盖。
+  /// 4. 无索引写入，刷新后从文件系统自动发现。
   ///
   /// 返回实际成功复制（新增 + 覆盖）的 Skill 数量。
   Future<int> syncSkillsFromDefaultAgent({
@@ -233,13 +120,12 @@ class SkillService {
       return 0;
     }
 
-    // 获取 HOME 路径候选列表
     final List<String> homes = _homeCandidates();
     if (homes.isEmpty) {
       return 0;
     }
 
-    // 收集默认 Agent 所有发现根目录，并扫描包含 SKILL.md 的一级子目录
+    // 收集默认 Agent 所有发现根目录下含 SKILL.md 的一级子目录
     final List<Directory> skillDirs = <Directory>[];
     final Set<String> permissionDeniedPaths = <String>{};
 
@@ -285,16 +171,6 @@ class SkillService {
       await targetRootDir.create(recursive: true);
     }
 
-    // 读取当前索引，用于覆盖更新
-    final List<Skill> all = await getIndexedSkills();
-    // 构建目标 Agent 现有 skill 的 name → index 映射
-    final Map<String, int> existingNameIndex = <String, int>{};
-    for (int i = 0; i < all.length; i++) {
-      if (all[i].agentId == targetAgentId) {
-        existingNameIndex[all[i].name] = i;
-      }
-    }
-
     int syncedCount = 0;
     for (final Directory srcDir in skillDirs) {
       final String skillName = _baseName(srcDir.path);
@@ -307,33 +183,92 @@ class SkillService {
 
       // 递归复制 Skill 文件夹到目标 Agent 目录
       await _copySkillDir(srcDir, destDir);
-
-      // 构造新的索引 Skill 记录
-      final Skill synced = Skill(
-        id: _genId('${targetAgentId}_sync_$skillName'),
-        agentId: targetAgentId,
-        name: skillName,
-        version: 'local',
-        description: '从默认 Agent 同步',
-        author: 'sync',
-        source: 'sync:$defaultAgentId',
-        installedPath: destDir.absolute.path,
-      );
-
-      if (existingNameIndex.containsKey(skillName)) {
-        // 同名 → 覆盖索引中的旧记录
-        all[existingNameIndex[skillName]!] = synced;
-      } else {
-        // 新增
-        all.add(synced);
-      }
       syncedCount++;
     }
 
-    if (syncedCount > 0) {
-      await saveSkills(all);
-    }
     return syncedCount;
+  }
+
+  /// 从 zip 文件解压并安装 Skill 到 Agent 的首选发现根目录。
+  ///
+  /// zip 解压规则：
+  /// - 若 zip 内存在唯一顶层目录（如 `my-skill/SKILL.md`），以该目录名作为 Skill 文件夹名，
+  ///   并在解压时自动剥离顶层目录前缀。
+  /// - 若 zip 内为平铺结构（`SKILL.md` 直接在根），则使用 [preferredName] 或 zip 文件名。
+  Future<Skill> _installFromZip(
+    File zipFile, {
+    required String agentId,
+    String? preferredName,
+  }) async {
+    final List<int> bytes = await zipFile.readAsBytes();
+    final Archive archive = ZipDecoder().decodeBytes(bytes);
+
+    // 确定安装根目录
+    final List<String> homes = _homeCandidates();
+    if (homes.isEmpty) {
+      throw Exception('无法获取 HOME 目录');
+    }
+    final String targetRoot = _primaryDiscoveryRoot(agentId, homes.first);
+    final Directory targetRootDir = Directory(targetRoot);
+    if (!await targetRootDir.exists()) {
+      await targetRootDir.create(recursive: true);
+    }
+
+    // 检测 zip 内是否存在唯一顶层目录
+    final Set<String> topDirs = <String>{};
+    for (final ArchiveFile f in archive) {
+      final String clean = _sanitizeZipEntry(f.name);
+      if (clean.isEmpty) continue;
+      final String top = clean.split('/').first;
+      if (top.isNotEmpty) topDirs.add(top);
+    }
+
+    final bool hasSingleTopDir = topDirs.length == 1;
+    final String folderName = hasSingleTopDir
+        ? topDirs.first
+        : (preferredName ??
+            zipFile.uri.pathSegments.last.replaceAll('.zip', ''));
+
+    final Directory outputDir = Directory('${targetRootDir.path}/$folderName');
+    // 同名先删除再安装（覆盖语义）
+    if (await outputDir.exists()) {
+      await outputDir.delete(recursive: true);
+    }
+    await outputDir.create(recursive: true);
+
+    // 解压 zip 内容
+    for (final ArchiveFile file in archive) {
+      final String cleanPath = _sanitizeZipEntry(file.name);
+      if (cleanPath.isEmpty) continue;
+
+      // 去掉顶层目录前缀（若有）
+      final String relativePath = hasSingleTopDir
+          ? cleanPath
+              .substring(folderName.length)
+              .replaceAll(RegExp(r'^/'), '')
+          : cleanPath;
+      if (relativePath.isEmpty) continue;
+
+      final String outPath = '${outputDir.path}/$relativePath';
+      if (file.isFile) {
+        final File outFile = File(outPath);
+        await outFile.parent.create(recursive: true);
+        await outFile.writeAsBytes(_toByteList(file.content));
+      } else {
+        await Directory(outPath).create(recursive: true);
+      }
+    }
+
+    return Skill(
+      id: _genId('${agentId}_$folderName'),
+      agentId: agentId,
+      name: folderName,
+      version: 'local',
+      description: '已安装',
+      author: 'unknown',
+      source: 'upload',
+      installedPath: outputDir.absolute.path,
+    );
   }
 
   /// 递归将 [src] 目录的全部内容复制到 [dest] 目录。
@@ -356,7 +291,7 @@ class SkillService {
   }
 
   /// 返回指定 Agent 在 [home] 下的**首选**存放目录（即 _discoveryRoots 的第一个路径）。
-  /// 用于确定同步时文件的写入位置。
+  /// 用于确定同步/安装时文件的写入位置。
   String _primaryDiscoveryRoot(String agentId, String home) {
     final List<String>? roots = _discoveryRoots(home)[agentId];
     if (roots == null || roots.isEmpty) {
@@ -366,77 +301,7 @@ class SkillService {
     return roots.first;
   }
 
-  Future<Skill> _installFromZip(
-    File zipFile, {
-    required String sourcePathLabel,
-    required String agentId,
-    Skill? metadata,
-  }) async {
-    final List<int> bytes = await zipFile.readAsBytes();
-    final Archive archive = ZipDecoder().decodeBytes(bytes);
-
-    final Directory root = await _getSkillRootDir();
-    final String folderName = metadata?.id ?? _genId(zipFile.uri.pathSegments.last);
-    final Directory outputDir = Directory('${root.path}/$folderName');
-    if (!await outputDir.exists()) {
-      await outputDir.create(recursive: true);
-    }
-
-    for (final ArchiveFile file in archive) {
-      final String cleanPath = _sanitizeZipEntry(file.name);
-      if (cleanPath.isEmpty) {
-        continue;
-      }
-      final String outPath = '${outputDir.path}/$cleanPath';
-      if (file.isFile) {
-        final File outFile = File(outPath);
-        await outFile.parent.create(recursive: true);
-        await outFile.writeAsBytes(_toByteList(file.content));
-      } else {
-        await Directory(outPath).create(recursive: true);
-      }
-    }
-
-    final Skill skill = (metadata ??
-            Skill(
-              id: folderName,
-              agentId: agentId,
-              name: folderName,
-              version: '0.0.1',
-              description: 'Installed from zip package',
-              author: 'unknown',
-              source: sourcePathLabel,
-            ))
-        .copyWith(
-          installedPath: outputDir.path,
-          source: sourcePathLabel,
-          agentId: agentId,
-        );
-
-    return _persistSkill(skill, sourcePath: outputDir.path);
-  }
-
-  Future<Skill> _persistSkill(
-    Skill skill, {
-    required String sourcePath,
-  }) async {
-    final List<Skill> all = await getIndexedSkills();
-    final int index = all.indexWhere((Skill s) => s.id == skill.id);
-
-    final Skill normalized = skill.copyWith(
-      installedPath: skill.installedPath ?? sourcePath,
-    );
-    if (index >= 0) {
-      all[index] = normalized;
-    } else {
-      all.add(normalized);
-    }
-
-    await saveSkills(all);
-    return normalized;
-  }
-
-  /// 自动发现指定 Agent 的已安装 Skill 列表。
+  /// 自动发现指定 Agent 的已安装 Skill 列表（纯文件系统实时扫描）。
   ///
   /// 发现规则：
   /// 1. 遍历 [_discoveryRoots] 中该 Agent 的所有 roots 目录。
@@ -449,7 +314,7 @@ class SkillService {
       return <Skill>[];
     }
 
-    // 收集该 agent 所有需要扫描的根目录
+    // 收集该 agent 所有需要扫描的根目录（去重）
     final Set<String> roots = <String>{};
     for (final String home in homeCandidates) {
       roots.addAll(_discoveryRoots(home)[agentId] ?? const <String>[]);
@@ -478,7 +343,10 @@ class SkillService {
         }
 
         // 仅当目录内含 SKILL.md 时才视为有效 Skill
-        if (!await _hasSkillMd(child, permissionDeniedPaths: permissionDeniedPaths)) {
+        if (!await _hasSkillMd(
+          child,
+          permissionDeniedPaths: permissionDeniedPaths,
+        )) {
           continue;
         }
 
@@ -507,6 +375,8 @@ class SkillService {
       );
     }
 
+    // 按名称排序，方便展示
+    discovered.sort((Skill a, Skill b) => a.name.compareTo(b.name));
     return discovered;
   }
 
@@ -524,6 +394,7 @@ class SkillService {
     );
   }
 
+  /// 返回可能的 HOME 目录候选列表（通过环境变量推断）。
   List<String> _homeCandidates() {
     final Set<String> homes = <String>{};
     final String? envHome = Platform.environment['HOME'];
@@ -575,9 +446,8 @@ class SkillService {
     };
   }
 
-  // _collectCandidateSkillDirs 已移除。
-  // 新规则：只有包含 SKILL.md 的直接子目录才被识别为有效 Skill，参见 _hasSkillMd。
-
+  /// 安全列出 [dir] 下所有直接子目录（含符号链接指向的目录）。
+  /// 权限错误时记录到 [permissionDeniedPaths] 并继续。
   Future<List<Directory>> _listDirsSafe(
     Directory dir, {
     required Set<String> permissionDeniedPaths,
@@ -600,11 +470,13 @@ class SkillService {
       if (_isPermissionDeniedError(err)) {
         permissionDeniedPaths.add(dir.path);
       }
-      // Ignore directory listing errors and continue scanning other paths.
+      // 忽略目录列举错误，继续扫描其他路径
     }
     return results;
   }
 
+  /// 安全列出 [dir] 下所有直接子文件。
+  /// 权限错误时记录到 [permissionDeniedPaths] 并继续。
   Future<List<File>> _listFilesSafe(
     Directory dir, {
     required Set<String> permissionDeniedPaths,
@@ -621,11 +493,12 @@ class SkillService {
       if (_isPermissionDeniedError(err)) {
         permissionDeniedPaths.add(dir.path);
       }
-      // Ignore directory listing errors and continue scanning other paths.
+      // 忽略目录列举错误，继续扫描其他路径
     }
     return results;
   }
 
+  /// 判断异常是否为文件系统权限拒绝错误。
   bool _isPermissionDeniedError(Object error) {
     if (error is! FileSystemException) {
       return false;
@@ -642,15 +515,20 @@ class SkillService {
         osMsg.contains('operation not permitted');
   }
 
+  /// 取路径最后一段（文件/目录名）。
   String _baseName(String path) {
-    final List<String> parts =
-        path.replaceAll('\\', '/').split('/').where((String s) => s.isNotEmpty).toList();
+    final List<String> parts = path
+        .replaceAll('\\', '/')
+        .split('/')
+        .where((String s) => s.isNotEmpty)
+        .toList();
     if (parts.isEmpty) {
       return '';
     }
     return parts.last;
   }
 
+  /// 清理 zip 条目路径，防止路径穿越攻击。
   String _sanitizeZipEntry(String name) {
     final String normalized = name.replaceAll('\\', '/').trim();
     if (normalized.isEmpty ||
@@ -661,6 +539,7 @@ class SkillService {
     return normalized;
   }
 
+  /// 将 archive 文件内容转为字节列表。
   List<int> _toByteList(dynamic content) {
     if (content == null) {
       return <int>[];
@@ -677,30 +556,9 @@ class SkillService {
     throw Exception('Unsupported archive content type: ${content.runtimeType}');
   }
 
-  String _fingerprint(Skill skill) {
-    return '${skill.agentId}:${skill.name}:${skill.installedPath ?? ''}';
-  }
-
+  /// 将原始字符串转换为合法的 ID（小写字母、数字、下划线）。
   String _genId(String raw) {
     final String lower = raw.toLowerCase();
     return lower.replaceAll(RegExp(r'[^a-z0-9]+'), '_').replaceAll('_zip', '');
-  }
-
-  Future<Directory> _getSkillRootDir() async {
-    final Directory supportDir = await getApplicationSupportDirectory();
-    final Directory appDir = Directory('${supportDir.path}/skill_lake/installed');
-    if (!await appDir.exists()) {
-      await appDir.create(recursive: true);
-    }
-    return appDir;
-  }
-
-  Future<File> _getIndexFile() async {
-    final Directory supportDir = await getApplicationSupportDirectory();
-    final Directory appDir = Directory('${supportDir.path}/skill_lake');
-    if (!await appDir.exists()) {
-      await appDir.create(recursive: true);
-    }
-    return File('${appDir.path}/$_indexFileName');
   }
 }
