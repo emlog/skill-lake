@@ -156,6 +156,8 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (BuildContext context, int index) {
                         final Skill skill = _skills[index];
+                        // 仅原始自动发现的技能（本地扫描出的）设为只读。
+                        // 同步过来的技能（sync: 开头）或安装的技能（upload/http）均可删除/移除。
                         final bool readOnly = skill.source.startsWith('auto:');
                         final ColorScheme color = Theme.of(context).colorScheme;
                         return Card(
@@ -177,7 +179,8 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                             ),
                             title: Text('${skill.name} (${skill.version})'),
                             subtitle: Text(
-                              '${skill.description}\n来源: ${skill.source}',
+                              // 优先显示真实文件夹路径，无路径时降级显示 source 标识
+                              '${skill.description}\n路径: ${skill.installedPath?.isNotEmpty == true ? skill.installedPath! : skill.source}',
                             ),
                             isThreeLine: true,
                             trailing: Wrap(
@@ -405,9 +408,15 @@ class _SkillDetailDialog extends StatelessWidget {
               _SkillDetailRow(label: '版本', value: skill.version),
               _SkillDetailRow(label: '描述', value: skill.description),
               _SkillDetailRow(label: '作者', value: skill.author),
-              _SkillDetailRow(label: '来源', value: skill.source),
+              // 路径优先显示真实文件夹路径，无路径时降级为 source 标识
+              _SkillDetailRow(
+                label: '路径',
+                value: skill.installedPath?.isNotEmpty == true
+                    ? skill.installedPath!
+                    : skill.source,
+              ),
+              _SkillDetailRow(label: '类型', value: skill.source),
               _SkillDetailRow(label: 'Agent', value: skill.agentId),
-              _SkillDetailRow(label: '安装路径', value: skill.installedPath ?? '无'),
               _SkillDetailRow(label: '标签', value: tags),
             ],
           ),
