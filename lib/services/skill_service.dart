@@ -342,13 +342,32 @@ class SkillService {
           continue;
         }
 
-        // 仅当目录内含 SKILL.md 时才视为有效 Skill
-        if (!await _hasSkillMd(
+        // 获取子目录文件列表
+        final List<File> childFiles = await _listFilesSafe(
           child,
           permissionDeniedPaths: permissionDeniedPaths,
-        )) {
+        );
+        final Iterable<File> skillMds = childFiles.where(
+          (File f) => _baseName(f.path).toLowerCase() == 'skill.md',
+        );
+
+        // 仅当目录内含 SKILL.md 时才视为有效 Skill
+        if (skillMds.isEmpty) {
           continue;
         }
+        final File skillMd = skillMds.first;
+
+        String description = '';
+        try {
+          // Read up to 8KB to avoid loading huge files into memory for frontmatter
+          // But readAsString is simpler, SKILL.md is usually tiny.
+          final String content = await skillMd.readAsString();
+          final RegExp descExp = RegExp(r'^description:\s*(.+)$', multiLine: true);
+          final RegExpMatch? match = descExp.firstMatch(content);
+          if (match != null) {
+            description = match.group(1)?.trim() ?? '';
+          }
+        } catch (_) {}
 
         // 使用真实绝对路径，确保展示路径与磁盘路径完全一致
         final String realPath = child.absolute.path;
@@ -359,7 +378,7 @@ class SkillService {
             agentId: agentId,
             name: basename,
             version: 'local',
-            description: '自动发现',
+            description: description,
             author: 'local',
             source: 'auto:$root',
             installedPath: realPath,

@@ -124,10 +124,10 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
               ),
               const SizedBox(width: 8),
             ],
-            IconButton.filled(
+            IconButton.filledTonal(
               tooltip: '上传安装',
               onPressed: _onUploadInstall,
-              icon: const Icon(Icons.upload_file),
+              icon: const Icon(Icons.upload),
             ),
             const SizedBox(width: 8),
             IconButton.filledTonal(
@@ -138,23 +138,33 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: <Widget>[
-            _TagPill(label: '总数 ${_skills.length}'),
-            const SizedBox(width: 8),
-            _TagPill(label: 'Agent: ${widget.selectedAgent.displayName}'),
-          ],
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _skills.isEmpty
                   ? const Center(child: Text('暂无已安装 Skill'))
                   : ListView.separated(
-                      itemCount: _skills.length,
+                      itemCount: _skills.length + 1,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (BuildContext context, int index) {
+                        if (index == _skills.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: Text(
+                                '总数 ${_skills.length}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .outline),
+                              ),
+                            ),
+                          );
+                        }
                         final Skill skill = _skills[index];
                         // 有 installedPath 即可删除（不区分 auto/sync/upload）
                         final bool canDelete =
@@ -177,8 +187,11 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                             ),
                             title: Text('${skill.name} (${skill.version})'),
                             subtitle: Text(
-                              // 优先显示真实文件夹路径，无路径时降级显示 source 标识
-                              '${skill.description}\n路径: ${skill.installedPath?.isNotEmpty == true ? skill.installedPath! : skill.source}',
+                              skill.description.trim().isEmpty
+                                  ? '暂无描述'
+                                  : skill.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             isThreeLine: true,
                             trailing: Wrap(
@@ -187,7 +200,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                                 IconButton(
                                   tooltip: '查看',
                                   onPressed: () => _onView(skill),
-                                  icon: const Icon(Icons.visibility_outlined),
+                                  icon: const Icon(Icons.more_horiz),
                                 ),
                                 IconButton(
                                   tooltip: '删除',

@@ -70,17 +70,17 @@ class AppScaffoldShell extends StatelessWidget {
                           NavigationRailDestination(
                             icon: Icon(Icons.extension_outlined),
                             selectedIcon: Icon(Icons.extension),
-                            label: Text('Skill 管理'),
+                            label: Text('Skill'),
                           ),
                           NavigationRailDestination(
                             icon: Icon(Icons.smart_toy_outlined),
                             selectedIcon: Icon(Icons.smart_toy),
-                            label: Text('Agent 管理'),
+                            label: Text('Agent'),
                           ),
                           NavigationRailDestination(
                             icon: Icon(Icons.storefront_outlined),
                             selectedIcon: Icon(Icons.storefront),
-                            label: Text('Skill 商店'),
+                            label: Text('Store'),
                           ),
                         ],
                       ),
