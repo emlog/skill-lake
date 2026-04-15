@@ -185,11 +185,11 @@ class SkillService {
     await saveSkills(all);
   }
 
-  /// 将默认 Agent（[defaultAgentId]）的所有 indexed skills 全量同步到目标 Agent（[targetAgentId]）。
+  /// 将默认 Agent（[defaultAgentId]）的所有 Skill（含自动发现的）全量同步到目标 Agent（[targetAgentId]）。
   ///
   /// 同步规则：
-  /// - 遍历默认 Agent 的所有 indexed skill，逐一同步到目标 Agent
-  /// - 同名 skill 直接覆盖更新（保留同步后的 id 和 agentId）
+  /// - 通过 getInstalledSkillsForAgent 获取默认 Agent 的全部 Skill（索引 + 自动发现）
+  /// - 同名 skill 直接覆盖更新
   /// - 只复制索引记录（共享同一 installedPath），不复制文件
   /// - 目标 Agent 不能是默认 Agent 本身
   ///
@@ -203,15 +203,16 @@ class SkillService {
       return 0;
     }
 
-    final List<Skill> all = await getIndexedSkills();
-
-    // 获取默认 Agent 的 skill 列表
+    // 获取默认 Agent 的全部 Skill（包含索引和自动发现的）
     final List<Skill> defaultSkills =
-        all.where((Skill s) => s.agentId == defaultAgentId).toList();
+        await getInstalledSkillsForAgent(defaultAgentId);
 
     if (defaultSkills.isEmpty) {
       return 0;
     }
+
+    // 读取当前索引文件（同步结果写回索引）
+    final List<Skill> all = await getIndexedSkills();
 
     // 构建目标 Agent 现有 skill 的 name → index 映射，用于覆盖
     final Map<String, int> existingNameIndex = <String, int>{};
