@@ -94,60 +94,17 @@ class _SkillStorePageState extends State<SkillStorePage> {
   @override
   Widget build(BuildContext context) {
     final ColorScheme color = Theme.of(context).colorScheme;
-    final AgentTarget target = _installTarget;
-    final bool isDefaultTarget = widget.defaultAgent != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        // 标题区域
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: color.surfaceContainerLowest,
-            border: Border.all(
-              color: color.outlineVariant.withValues(alpha: 0.45),
-            ),
-          ),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Skill Store',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ],
-                ),
-              ),
-              // 刷新按钮（强制刷新缓存）
-              IconButton.filledTonal(
-                onPressed: _loading
-                    ? null
-                    : () => _loadStoreSkills(forceRefresh: true),
-                tooltip: '刷新缓存',
-                icon: _refreshing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
         // 仓库源切换器
         _SourceSwitcher(
           sources: StoreService.builtInSources,
           selectedIndex: _selectedSourceIndex,
           onChanged: _onSourceChanged,
-          itemCount: _items.length,
+          onRefresh: () => _loadStoreSkills(forceRefresh: true),
+          isRefreshing: _refreshing,
           isLoading: _loading,
         ),
         const SizedBox(height: 12),
@@ -356,14 +313,16 @@ class _SourceSwitcher extends StatelessWidget {
     required this.sources,
     required this.selectedIndex,
     required this.onChanged,
-    required this.itemCount,
+    required this.onRefresh,
+    required this.isRefreshing,
     required this.isLoading,
   });
 
   final List<GitHubSkillSource> sources;
   final int selectedIndex;
   final ValueChanged<int> onChanged;
-  final int itemCount;
+  final VoidCallback onRefresh;
+  final bool isRefreshing;
   final bool isLoading;
 
   @override
@@ -378,15 +337,6 @@ class _SourceSwitcher extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Icon(Icons.source_outlined, size: 16, color: color.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Text(
-            '源：',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: color.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(width: 4),
           // 各源按钮
           ...List<Widget>.generate(sources.length, (int index) {
             final GitHubSkillSource src = sources[index];
@@ -410,21 +360,18 @@ class _SourceSwitcher extends StatelessWidget {
             );
           }),
           const Spacer(),
-          // Skill 数量标签
-          if (!isLoading)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.primaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '$itemCount 个 Skill',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: color.onPrimaryContainer,
-                    ),
-              ),
-            ),
+          // 刷新按钮
+          IconButton.filledTonal(
+            onPressed: isLoading ? null : onRefresh,
+            tooltip: '刷新缓存',
+            icon: isRefreshing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh),
+          ),
         ],
       ),
     );

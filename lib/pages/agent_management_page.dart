@@ -24,28 +24,9 @@ class AgentManagementPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme color = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        // 标题区域
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: color.surfaceContainerLowest,
-            border: Border.all(
-              color: color.outlineVariant.withValues(alpha: 0.45),
-            ),
-          ),
-          child: Text(
-            'Agent',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-        ),
-        const SizedBox(height: 16),
         Expanded(
           child: ListView.separated(
             itemCount: agents.length,
