@@ -72,9 +72,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final AgentService _agentService = AgentService();
+
+  /// 当前选中的底部导航菜单索引
   int _selectedMenu = 0;
+
+  /// 当前在 Skill 管理/商店页面中选中的 Agent 索引（基于已启用列表）
   int _selectedAgent = 0;
+
+  /// 所有 Agent 列表（含禁用的）
   List<AgentTarget> _agents = const <AgentTarget>[];
+
   bool _loadingAgents = true;
 
   @override
@@ -83,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadAgents();
   }
 
+  /// 从持久化存储加载 Agent 列表
   Future<void> _loadAgents() async {
     final List<AgentTarget> loaded = await _agentService.loadAgents();
     if (!mounted) {
@@ -97,6 +105,28 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// 从 _agents 提取当前默认 Agent（isDefault == true）
+  AgentTarget? get _defaultAgent {
+    try {
+      return _agents.firstWhere((AgentTarget a) => a.isDefault);
+    } catch (_) {
+      return _agents.isEmpty ? null : _agents.first;
+    }
+  }
+
+  /// 处理 Agent 管理页切换默认 Agent 的回调
+  Future<void> _onDefaultAgentChanged(String agentId) async {
+    final List<AgentTarget> updated =
+        _agentService.setDefaultAgent(_agents, agentId);
+    await _agentService.saveAgents(updated);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _agents = updated;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadingAgents) {
@@ -104,6 +134,8 @@ class _HomeScreenState extends State<HomeScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+    // 仅展示已启用的 Agent
     final List<AgentTarget> enabledAgents =
         _agents.where((AgentTarget item) => item.enabled).toList();
     final int safeSelectedAgent = enabledAgents.isEmpty
@@ -117,13 +149,16 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     } else {
       content = switch (_selectedMenu) {
+        // Skill 管理页：透传 defaultAgent 用于显示同步按钮
         0 => SkillManagementPage(
             selectedAgent: enabledAgents[safeSelectedAgent],
             agents: enabledAgents,
             selectedAgentIndex: safeSelectedAgent,
             onAgentChanged: (int index) =>
                 setState(() => _selectedAgent = index),
+            defaultAgent: _defaultAgent,
           ),
+        // Agent 管理页：透传 onDefaultAgentChanged 回调
         1 => AgentManagementPage(
             agents: _agents,
             onAgentsChanged: (List<AgentTarget> updated) async {
@@ -144,9 +179,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               });
             },
+            onDefaultAgentChanged: _onDefaultAgentChanged,
           ),
+        // Skill 商店页：透传 defaultAgent，安装目标优先使用默认 Agent
         _ => SkillStorePage(
-            selectedAgent: enabledAgents[safeSelectedAgent],
+            selectedAgent: enabledAgents.isEmpty
+                ? _agents.first
+                : enabledAgents[safeSelectedAgent],
+            defaultAgent: _defaultAgent,
           ),
       };
     }

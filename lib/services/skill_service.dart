@@ -185,6 +185,65 @@ class SkillService {
     await saveSkills(all);
   }
 
+  /// 将默认 Agent（[defaultAgentId]）的所有 indexed skills 全量同步到目标 Agent（[targetAgentId]）。
+  ///
+  /// 同步规则：
+  /// - 遍历默认 Agent 的所有 indexed skill，逐一同步到目标 Agent
+  /// - 同名 skill 直接覆盖更新（保留同步后的 id 和 agentId）
+  /// - 只复制索引记录（共享同一 installedPath），不复制文件
+  /// - 目标 Agent 不能是默认 Agent 本身
+  ///
+  /// 返回实际同步（新增 + 覆盖）的 Skill 数量。
+  Future<int> syncSkillsFromDefaultAgent({
+    required String defaultAgentId,
+    required String targetAgentId,
+  }) async {
+    // 不允许将默认 Agent 的 skill 同步给自身
+    if (defaultAgentId == targetAgentId) {
+      return 0;
+    }
+
+    final List<Skill> all = await getIndexedSkills();
+
+    // 获取默认 Agent 的 skill 列表
+    final List<Skill> defaultSkills =
+        all.where((Skill s) => s.agentId == defaultAgentId).toList();
+
+    if (defaultSkills.isEmpty) {
+      return 0;
+    }
+
+    // 构建目标 Agent 现有 skill 的 name → index 映射，用于覆盖
+    final Map<String, int> existingNameIndex = <String, int>{};
+    for (int i = 0; i < all.length; i++) {
+      if (all[i].agentId == targetAgentId) {
+        existingNameIndex[all[i].name] = i;
+      }
+    }
+
+    int syncedCount = 0;
+    for (final Skill source in defaultSkills) {
+      final Skill synced = source.copyWith(
+        id: _genId('${targetAgentId}_sync_${source.name}'),
+        agentId: targetAgentId,
+      );
+
+      if (existingNameIndex.containsKey(source.name)) {
+        // 同名 skill 已存在 → 覆盖更新
+        all[existingNameIndex[source.name]!] = synced;
+      } else {
+        // 不存在 → 新增
+        all.add(synced);
+      }
+      syncedCount++;
+    }
+
+    if (syncedCount > 0) {
+      await saveSkills(all);
+    }
+    return syncedCount;
+  }
+
   Future<Skill> _installFromZip(
     File zipFile, {
     required String sourcePathLabel,
@@ -394,6 +453,13 @@ class SkillService {
         '$home/.trae/agent/skills',
         '$home/.config/trae/skills',
         '$home/Library/Application Support/Trae/skills',
+      ],
+      // Antigravity 的常见 skill 安装目录
+      'antigravity': <String>[
+        '$home/.antigravity/skills',
+        '$home/.antigravity/agent/skills',
+        '$home/.config/antigravity/skills',
+        '$home/Library/Application Support/Antigravity/skills',
       ],
     };
   }

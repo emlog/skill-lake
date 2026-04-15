@@ -4,6 +4,9 @@ import '../models/agent_target.dart';
 import '../models/skill.dart';
 import '../services/skill_service.dart';
 
+/// Skill 管理页面，展示指定 Agent 的已安装 Skill 列表。
+///
+/// 若当前 Agent 不是默认 Agent，则提供「从默认 Agent 同步」功能按钮。
 class SkillManagementPage extends StatefulWidget {
   const SkillManagementPage({
     super.key,
@@ -11,12 +14,16 @@ class SkillManagementPage extends StatefulWidget {
     required this.agents,
     required this.selectedAgentIndex,
     required this.onAgentChanged,
+    this.defaultAgent,
   });
 
   final AgentTarget selectedAgent;
   final List<AgentTarget> agents;
   final int selectedAgentIndex;
   final ValueChanged<int> onAgentChanged;
+
+  /// 当前设定的默认 Agent；用于判断是否展示同步按钮，以及执行同步操作
+  final AgentTarget? defaultAgent;
 
   @override
   State<SkillManagementPage> createState() => _SkillManagementPageState();
@@ -107,6 +114,16 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
               ),
             ),
             const SizedBox(width: 8),
+            // 仅在当前 Agent 不是默认 Agent 且存在默认 Agent 时，显示同步按钮
+            if (widget.defaultAgent != null &&
+                widget.defaultAgent!.id != widget.selectedAgent.id) ...<Widget>[
+              IconButton.filledTonal(
+                tooltip: '从默认 Agent（${widget.defaultAgent!.displayName}）同步 Skill',
+                onPressed: _onSyncFromDefault,
+                icon: const Icon(Icons.sync_alt_outlined),
+              ),
+              const SizedBox(width: 8),
+            ],
             IconButton.filled(
               tooltip: '上传安装',
               onPressed: _onUploadInstall,
@@ -186,6 +203,40 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
         ),
       ],
     );
+  }
+
+  /// 从默认 Agent 同步 Skill 到当前 Agent（单向，不可反向同步）
+  Future<void> _onSyncFromDefault() async {
+    final AgentTarget? defaultAgent = widget.defaultAgent;
+    if (defaultAgent == null || defaultAgent.id == widget.selectedAgent.id) {
+      return;
+    }
+    try {
+      final int count = await _skillService.syncSkillsFromDefaultAgent(
+        defaultAgentId: defaultAgent.id,
+        targetAgentId: widget.selectedAgent.id,
+      );
+      await _loadSkills();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            count > 0
+                ? '已从 ${defaultAgent.displayName} 同步 $count 个 Skill'
+                : '无需同步，所有 Skill 已是最新',
+          ),
+        ),
+      );
+    } catch (err) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('同步失败：$err')),
+      );
+    }
   }
 
   Future<void> _onUploadInstall() async {
@@ -323,6 +374,10 @@ class _InlineAgentFilterBar extends StatelessWidget {
         return Icons.terminal;
       case 'sparkles':
         return Icons.auto_awesome_outlined;
+      // Antigravity 专属图标
+      case 'gravity':
+      case 'antigravity':
+        return Icons.rocket_launch_outlined;
       default:
         return Icons.smart_toy_outlined;
     }
