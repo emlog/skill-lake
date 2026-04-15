@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/agent_target.dart';
@@ -413,34 +415,91 @@ class _SkillDetailDialog extends StatelessWidget {
 
   final Skill skill;
 
+  Future<String> _loadSkillMd() async {
+    final String? path = skill.installedPath;
+    if (path == null || path.isEmpty) {
+      return '未找到本地路径，无法读取文件内容。';
+    }
+    final Directory dir = Directory(path);
+    if (!await dir.exists()) {
+      return '本地路径不存在。';
+    }
+
+    try {
+      final List<FileSystemEntity> files = await dir.list().toList();
+      for (final FileSystemEntity f in files) {
+        if (f is File && f.uri.pathSegments.last.toLowerCase() == 'skill.md') {
+          return await f.readAsString();
+        }
+      }
+    } catch (e) {
+      return '读取文件失败: $e';
+    }
+    return '未找到 SKILL.md 文件。';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String tags = skill.tags.isEmpty ? '无' : skill.tags.join(', ');
+    final ColorScheme color = Theme.of(context).colorScheme;
     return AlertDialog(
-      title: const Text('Skill 详情'),
+      title: Row(
+        children: <Widget>[
+          Icon(Icons.auto_awesome_outlined, color: color.primary),
+          const SizedBox(width: 8),
+          Flexible(child: Text(skill.name)),
+        ],
+      ),
       content: SizedBox(
-        width: 460,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              _SkillDetailRow(label: '名称', value: skill.name),
-              _SkillDetailRow(label: '版本', value: skill.version),
-              _SkillDetailRow(label: '描述', value: skill.description),
-              _SkillDetailRow(label: '作者', value: skill.author),
-              // 路径优先显示真实文件夹路径，无路径时降级为 source 标识
-              _SkillDetailRow(
-                label: '路径',
-                value: skill.installedPath?.isNotEmpty == true
-                    ? skill.installedPath!
-                    : skill.source,
+        width: 800,
+        height: 600,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _SkillDetailRow(label: '描述', value: skill.description),
+            _SkillDetailRow(
+              label: '路径',
+              value: skill.installedPath?.isNotEmpty == true
+                  ? skill.installedPath!
+                  : skill.source,
+            ),
+            const Divider(),
+            Text(
+              'SKILL.md',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: color.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: color.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: color.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: FutureBuilder<String>(
+                  future: _loadSkillMd(),
+                  builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return SingleChildScrollView(
+                      child: SelectableText(
+                        snapshot.data ?? '',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontFamily: 'monospace',
+                            ),
+                      ),
+                    );
+                  },
+                ),
               ),
-              _SkillDetailRow(label: '类型', value: skill.source),
-              _SkillDetailRow(label: 'Agent', value: skill.agentId),
-              _SkillDetailRow(label: '标签', value: tags),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       actions: <Widget>[

@@ -120,30 +120,6 @@ class _SkillStorePageState extends State<SkillStorePage> {
                       'Skill Store',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                    const SizedBox(height: 4),
-                    // 显示安装目标提示
-                    Row(
-                      children: <Widget>[
-                        Icon(
-                          isDefaultTarget
-                              ? Icons.star_rounded
-                              : Icons.smart_toy_outlined,
-                          size: 14,
-                          color: isDefaultTarget
-                              ? color.primary
-                              : color.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '将安装到：${target.displayName}${isDefaultTarget ? '（默认 Agent）' : ''}',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: isDefaultTarget
-                                    ? color.primary
-                                    : color.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -246,10 +222,14 @@ class _SkillStorePageState extends State<SkillStorePage> {
       if (!mounted) {
         return;
       }
+      final bool isDefaultTarget = widget.defaultAgent != null;
+      final String targetDesc = isDefaultTarget
+          ? '默认 Agent: ${target.displayName}'
+          : target.displayName;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '安装成功：${item.skill.name}（已安装到 ${target.displayName}）',
+            '安装成功：${item.skill.name} (已安装到 $targetDesc)',
           ),
         ),
       );
