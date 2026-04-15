@@ -17,38 +17,42 @@ class SkillLakeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 使用蓝紫色作为主色调，同时支持浅色和深色模式
+    const Color seedColor = Color(0xFF6366F1);
+
     return MaterialApp(
       title: 'Skill Lake',
       debugShowCheckedModeBanner: false,
+      // 浅色主题：跟随系统浅色模式
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF7BC67B),
+          seedColor: seedColor,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF4FBF4),
         cardTheme: CardThemeData(
           elevation: 0,
           margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
-            side: const BorderSide(color: Color(0xFFE1EEE1)),
+            side: BorderSide(
+              color: Colors.grey.shade200,
+            ),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFFF7FCF7),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFD4E5D4)),
+            borderSide: BorderSide(color: Colors.grey.shade300),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFD4E5D4)),
+            borderSide: BorderSide(color: Colors.grey.shade300),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF7BC67B), width: 1.4),
+            borderSide: const BorderSide(color: seedColor, width: 1.4),
           ),
         ),
         snackBarTheme: SnackBarThemeData(
@@ -58,6 +62,47 @@ class SkillLakeApp extends StatelessWidget {
           ),
         ),
       ),
+      // 深色主题：跟随系统深色模式
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+        cardTheme: CardThemeData(
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: Colors.grey.shade800,
+            ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade700),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade700),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: seedColor, width: 1.4),
+          ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      // 主题模式跟随系统
+      themeMode: ThemeMode.system,
       home: const HomeScreen(),
     );
   }
