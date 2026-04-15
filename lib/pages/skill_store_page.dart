@@ -117,7 +117,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      'Skill 商店',
+                      'Skill Store',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 4),

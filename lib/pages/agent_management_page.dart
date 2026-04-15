@@ -41,12 +41,10 @@ class AgentManagementPage extends StatelessWidget {
             ),
           ),
           child: Text(
-            'Agent 管理',
+            'Agent',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
         ),
-        const SizedBox(height: 8),
-        const Text('支持配置 Cursor、Claude Code、Codex、Trae 的启用状态，以及设置默认 Agent。'),
         const SizedBox(height: 16),
         Expanded(
           child: ListView.separated(
@@ -163,13 +161,6 @@ class _AgentCard extends StatelessWidget {
                         ),
                       ],
                     ],
-                  ),
-                  Text(
-                    agent.id,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: color.onSurfaceVariant),
                   ),
                 ],
               ),
