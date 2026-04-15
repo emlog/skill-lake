@@ -113,6 +113,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                 agents: widget.agents,
                 selectedIndex: widget.selectedAgentIndex,
                 onChanged: widget.onAgentChanged,
+                defaultAgent: widget.defaultAgent,
               ),
             ),
             const SizedBox(width: 8),
@@ -187,13 +188,32 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                                 color: color.onPrimaryContainer,
                               ),
                             ),
-                            title: Text('${skill.name} (${skill.version})'),
+                            title: GestureDetector(
+                              onTap: () => _onView(skill),
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: Text(
+                                  skill.version == 'local' || skill.version.isEmpty
+                                      ? skill.name
+                                      : '${skill.name} (${skill.version})',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: color.primary,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: color.primary.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              ),
+                            ),
                             subtitle: Text(
                               skill.description.trim().isEmpty
                                   ? '暂无描述'
                                   : skill.description,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: color.onSurfaceVariant,
+                                  ),
                             ),
                             isThreeLine: true,
                             trailing: Wrap(
@@ -288,6 +308,31 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
 
   /// 删除 Skill：物理删除对应文件夹，成功后刷新列表。
   Future<void> _onDelete(Skill skill) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('确认删除'),
+          content: Text('确定要删除 ${skill.name} 吗？\n此操作将不可恢复。'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm != true) return;
+
     try {
       await _skillService.deleteSkill(skill);
       await _loadSkills();
@@ -341,11 +386,13 @@ class _InlineAgentFilterBar extends StatelessWidget {
     required this.agents,
     required this.selectedIndex,
     required this.onChanged,
+    this.defaultAgent,
   });
 
   final List<AgentTarget> agents;
   final int selectedIndex;
   final ValueChanged<int> onChanged;
+  final AgentTarget? defaultAgent;
 
   @override
   Widget build(BuildContext context) {
@@ -379,10 +426,36 @@ class _InlineAgentFilterBar extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (BuildContext context, int index) {
           final AgentTarget agent = agents[index];
+          final bool isDefault = defaultAgent != null && defaultAgent!.id == agent.id;
           return ChoiceChip(
             selected: index == selectedIndex,
             onSelected: (_) => onChanged(index),
-            label: Text(agent.displayName),
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(agent.displayName),
+                if (isDefault) ...<Widget>[
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '默认',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
             avatar: Icon(_agentIcon(agent.icon), size: 16),
           );
         },
