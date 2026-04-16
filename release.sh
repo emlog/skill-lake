@@ -20,8 +20,8 @@ fi
 
 # Create a staging directory to include the the app and the Applications symlink
 DMG_STAGING_DIR="build/macos/Build/Products/Release/dmg_staging"
+rm -rf "$DMG_STAGING_DIR"
 mkdir -p "$DMG_STAGING_DIR"
-rm -rf "$DMG_STAGING_DIR"/*
 
 cp -R "$APP_PATH" "$DMG_STAGING_DIR/"
 ln -s /Applications "$DMG_STAGING_DIR/Applications"
