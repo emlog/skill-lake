@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/agent_target.dart';
+import '../services/settings_service.dart';
 import '../services/store_service.dart';
 
 /// Skill 商店页面，浏览并在线安装开源 Skill。
@@ -29,6 +30,7 @@ class SkillStorePage extends StatefulWidget {
 }
 
 class _SkillStorePageState extends State<SkillStorePage> {
+  final SettingsService _settingsService = SettingsService();
   final StoreService _storeService = const StoreService();
 
   /// 当前选中的仓库源索引
@@ -56,18 +58,31 @@ class _SkillStorePageState extends State<SkillStorePage> {
   AgentTarget get _installTarget => widget.defaultAgent ?? widget.selectedAgent;
 
   /// 当前选中的仓库源
-  GitHubSkillSource get _currentSource =>
+  SkillSource get _currentSource =>
       StoreService.builtInSources[_selectedSourceIndex];
 
   /// 从在线索引或缓存加载 Skill 列表
   Future<void> _loadStoreSkills({bool forceRefresh = false}) async {
+    final SkillSource src = _currentSource;
+    if (src is SkillsmpSkillSource) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _items = <StoreSkillItem>[];
+        _loading = false;
+        _refreshing = false;
+      });
+      return;
+    }
+
     setState(() {
       _loading = true;
       _refreshing = forceRefresh;
     });
     final List<StoreSkillItem> items =
         await _storeService.fetchSkillsFromSource(
-      _currentSource,
+      src as GitHubSkillSource,
       forceRefresh: forceRefresh,
     );
     if (!mounted) {
@@ -108,6 +123,28 @@ class _SkillStorePageState extends State<SkillStorePage> {
           isLoading: _loading,
         ),
         const SizedBox(height: 12),
+
+        // 如果是 Skillsmp 源，显示搜索框
+        if (_currentSource is SkillsmpSkillSource) ...<Widget>[
+          _SkillsmpSearchHeader(
+            settingsService: _settingsService,
+            onSearch: (String query, String apiKey) async {
+              setState(() {
+                _loading = true;
+              });
+              final List<StoreSkillItem> items =
+                  await _storeService.searchSkillsmp(query, apiKey);
+              if (!mounted) {
+                return;
+              }
+              setState(() {
+                _items = items;
+                _loading = false;
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
 
         // Skill 列表
         Expanded(
@@ -318,7 +355,7 @@ class _SourceSwitcher extends StatelessWidget {
     required this.isLoading,
   });
 
-  final List<GitHubSkillSource> sources;
+  final List<SkillSource> sources;
   final int selectedIndex;
   final ValueChanged<int> onChanged;
   final VoidCallback onRefresh;
@@ -339,7 +376,7 @@ class _SourceSwitcher extends StatelessWidget {
         children: <Widget>[
           // 各源按钮
           ...List<Widget>.generate(sources.length, (int index) {
-            final GitHubSkillSource src = sources[index];
+            final SkillSource src = sources[index];
             final bool selected = index == selectedIndex;
             return Padding(
               padding: const EdgeInsets.only(right: 6),
@@ -568,6 +605,95 @@ class _DetailRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Skillsmp 搜索及配置区域
+class _SkillsmpSearchHeader extends StatefulWidget {
+  const _SkillsmpSearchHeader({
+    required this.settingsService,
+    required this.onSearch,
+  });
+
+  final SettingsService settingsService;
+  final void Function(String query, String apiKey) onSearch;
+
+  @override
+  State<_SkillsmpSearchHeader> createState() => _SkillsmpSearchHeaderState();
+}
+
+class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
+  final TextEditingController _queryController = TextEditingController();
+  final TextEditingController _apiController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.settingsService.getSkillsmpApiKey().then((String key) {
+      if (mounted) {
+        _apiController.text = key;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    _apiController.dispose();
+    super.dispose();
+  }
+
+  void _onSearch() {
+    final String key = _apiController.text.trim();
+    widget.settingsService.saveSkillsmpApiKey(key);
+    widget.onSearch(_queryController.text.trim(), key);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          flex: 2,
+          child: TextField(
+            controller: _queryController,
+            decoration: const InputDecoration(
+              labelText: '搜索 Skill',
+              hintText: '如: web scraper',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            onSubmitted: (_) => _onSearch(),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 1,
+          child: TextField(
+            controller: _apiController,
+            decoration: const InputDecoration(
+              labelText: 'Skillsmp API Key (可选)',
+              hintText: 'sk_...',
+              prefixIcon: Icon(Icons.vpn_key_outlined),
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            obscureText: true,
+            onSubmitted: (_) => _onSearch(),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          height: 48,
+          child: FilledButton.icon(
+            onPressed: _onSearch,
+            icon: const Icon(Icons.search),
+            label: const Text('搜索'),
+          ),
+        ),
+      ],
     );
   }
 }

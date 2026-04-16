@@ -6,8 +6,16 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/skill.dart';
 
+/// 商店源抽象类
+abstract class SkillSource {
+  const SkillSource();
+
+  /// 完整的显示名称
+  String get displayName;
+}
+
 /// GitHub Skill 仓库源定义，包含仓库所有者、仓库名和 skill 子目录路径。
-class GitHubSkillSource {
+class GitHubSkillSource extends SkillSource {
   const GitHubSkillSource({
     required this.owner,
     required this.repo,
@@ -28,6 +36,7 @@ class GitHubSkillSource {
   final String skillsPath;
 
   /// 完整的显示名称（owner/repo）
+  @override
   String get displayName => '$owner/$repo';
 
   /// GitHub API：获取 skills 目录下的子目录列表
@@ -42,6 +51,14 @@ class GitHubSkillSource {
   /// 注意：GitHub 不支持单目录下载 zip，因此使用仓库级别的 archive
   String get repoZipUrl =>
       'https://api.github.com/repos/$owner/$repo/zipball/$branch';
+}
+
+/// Skillsmp 搜索源
+class SkillsmpSkillSource extends SkillSource {
+  const SkillsmpSkillSource();
+
+  @override
+  String get displayName => 'skillsmp';
 }
 
 /// 商店中展示的 Skill 条目。
@@ -102,10 +119,11 @@ class StoreSkillItem {
 class StoreService {
   const StoreService();
 
-  /// 内置的 GitHub Skill 仓库源列表
-  static const List<GitHubSkillSource> builtInSources = <GitHubSkillSource>[
+  /// 内置的 Skill 仓库源列表
+  static const List<SkillSource> builtInSources = <SkillSource>[
     GitHubSkillSource(owner: 'anthropics', repo: 'skills'),
     GitHubSkillSource(owner: 'obra', repo: 'superpowers'),
+    SkillsmpSkillSource(),
   ];
 
   /// 获取缓存文件路径（按 owner/repo 区分）
@@ -299,5 +317,98 @@ class StoreService {
     }
 
     return result;
+  }
+
+  /// 搜索 skillsmp API
+  Future<List<StoreSkillItem>> searchSkillsmp(String query, String apiKey) async {
+    if (query.trim().isEmpty) {
+      return <StoreSkillItem>[];
+    }
+    try {
+      final Uri url = Uri.parse(
+          'https://skillsmp.com/api/v1/skills/ai-search?q=${Uri.encodeComponent(query)}');
+      final Map<String, String> headers = <String, String>{};
+      if (apiKey.trim().isNotEmpty) {
+        headers['Authorization'] = 'Bearer $apiKey';
+      }
+
+      final http.Response response = await http.get(url, headers: headers);
+      if (response.statusCode != 200) {
+        return <StoreSkillItem>[];
+      }
+
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
+      if (data['success'] != true) {
+        return <StoreSkillItem>[];
+      }
+
+      final Map<String, dynamic> pageData = data['data'] as Map<String, dynamic>;
+      final List<dynamic> items = pageData['data'] as List<dynamic>? ?? <dynamic>[];
+      final List<StoreSkillItem> results = <StoreSkillItem>[];
+
+      for (final dynamic e in items) {
+        final Map<String, dynamic> itemMap = e as Map<String, dynamic>;
+        final Map<String, dynamic>? skillMap = itemMap['skill'] as Map<String, dynamic>?;
+        if (skillMap == null) {
+          continue;
+        }
+
+        final String githubUrl = skillMap['githubUrl'] as String? ?? '';
+        final GitHubSkillSource? parsedSource = _parseGitHubUrl(githubUrl);
+        if (parsedSource != null) {
+          final List<String> segments = Uri.parse(githubUrl).pathSegments;
+          final String skillDirName = segments.last;
+
+          results.add(
+            StoreSkillItem(
+              skill: Skill(
+                id: skillMap['id'] as String? ?? '',
+                agentId: '',
+                name: skillMap['name'] as String? ?? skillDirName,
+                version: 'latest',
+                description: skillMap['description'] as String? ?? '无描述',
+                author: skillMap['author'] as String? ?? parsedSource.owner,
+                source: 'skillsmp',
+              ),
+              source: parsedSource,
+              skillDirName: skillDirName,
+            ),
+          );
+        }
+      }
+      return results;
+    } catch (_) {
+      return <StoreSkillItem>[];
+    }
+  }
+
+  /// 从 GitHub URL 中解析目标仓库源信息
+  /// URL 格式例如：https://github.com/booklib-ai/booklib/tree/main/skills/web-scraping-python
+  GitHubSkillSource? _parseGitHubUrl(String url) {
+    if (url.isEmpty) {
+      return null;
+    }
+    final Uri? uri = Uri.tryParse(url);
+    if (uri == null || uri.host != 'github.com') {
+      return null;
+    }
+    final List<String> segments = uri.pathSegments;
+    if (segments.length >= 5 && segments[2] == 'tree') {
+      final String owner = segments[0];
+      final String repo = segments[1];
+      final String branch = segments[3];
+      // 第 4 部分到倒数第 2 部分组成 skillsPath
+      final List<String> pathSegments = segments.sublist(4, segments.length - 1);
+      final String skillsPath = pathSegments.join('/');
+
+      return GitHubSkillSource(
+        owner: owner,
+        repo: repo,
+        branch: branch,
+        skillsPath: skillsPath,
+      );
+    }
+    return null;
   }
 }
