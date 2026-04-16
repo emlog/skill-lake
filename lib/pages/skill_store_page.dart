@@ -625,29 +625,111 @@ class _SkillsmpSearchHeader extends StatefulWidget {
 
 class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
   final TextEditingController _queryController = TextEditingController();
-  final TextEditingController _apiController = TextEditingController();
+  String _apiKey = '';
 
   @override
   void initState() {
     super.initState();
-    widget.settingsService.getSkillsmpApiKey().then((String key) {
-      if (mounted) {
-        _apiController.text = key;
-      }
-    });
+    _loadApiKey();
+  }
+
+  Future<void> _loadApiKey() async {
+    final String key = await widget.settingsService.getSkillsmpApiKey();
+    if (mounted) {
+      setState(() {
+        _apiKey = key;
+      });
+    }
   }
 
   @override
   void dispose() {
     _queryController.dispose();
-    _apiController.dispose();
     super.dispose();
   }
 
   void _onSearch() {
-    final String key = _apiController.text.trim();
-    widget.settingsService.saveSkillsmpApiKey(key);
-    widget.onSearch(_queryController.text.trim(), key);
+    widget.onSearch(_queryController.text.trim(), _apiKey);
+  }
+
+  Future<void> _openSettingsDialog() async {
+    final TextEditingController apiController =
+        TextEditingController(text: _apiKey);
+    final bool? saved = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: <Widget>[
+              Icon(Icons.settings_outlined),
+              SizedBox(width: 8),
+              Text('Skillsmp 设置'),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text('设置您自己的 API Key 可以获得更多的搜索额度。'),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text('获取 API Key：'),
+                    Expanded(
+                      child: SelectableText(
+                        'https://skillsmp.com/docs/api',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: apiController,
+                  decoration: const InputDecoration(
+                    labelText: 'API Key',
+                    hintText: 'sk_...',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.vpn_key_outlined),
+                    isDense: true,
+                  ),
+                  obscureText: true,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (saved == true) {
+      final String newKey = apiController.text.trim();
+      await widget.settingsService.saveSkillsmpApiKey(newKey);
+      if (mounted) {
+        setState(() {
+          _apiKey = newKey;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已保存 API Key 配置')),
+        );
+      }
+    }
   }
 
   @override
@@ -655,32 +737,15 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
     return Row(
       children: <Widget>[
         Expanded(
-          flex: 2,
           child: TextField(
             controller: _queryController,
             decoration: const InputDecoration(
               labelText: '搜索 Skill',
-              hintText: '如: web scraper',
+              hintText: '支持语义搜索，例如：最适合前端开发的SKILL',
               prefixIcon: Icon(Icons.search),
               border: OutlineInputBorder(),
               isDense: true,
             ),
-            onSubmitted: (_) => _onSearch(),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 1,
-          child: TextField(
-            controller: _apiController,
-            decoration: const InputDecoration(
-              labelText: 'Skillsmp API Key (可选)',
-              hintText: 'sk_...',
-              prefixIcon: Icon(Icons.vpn_key_outlined),
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-            obscureText: true,
             onSubmitted: (_) => _onSearch(),
           ),
         ),
@@ -691,6 +756,16 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
             onPressed: _onSearch,
             icon: const Icon(Icons.search),
             label: const Text('搜索'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          height: 48,
+          width: 48,
+          child: IconButton.filledTonal(
+            onPressed: _openSettingsDialog,
+            icon: const Icon(Icons.settings),
+            tooltip: 'Skillsmp 配置',
           ),
         ),
       ],
