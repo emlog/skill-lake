@@ -17,7 +17,19 @@ echo "Creating DMG package..."
 if [ -f "$DMG_NAME" ]; then
     rm "$DMG_NAME"
 fi
-hdiutil create -volname "Skill Lake" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_NAME"
+
+# Create a staging directory to include the the app and the Applications symlink
+DMG_STAGING_DIR="build/macos/Build/Products/Release/dmg_staging"
+mkdir -p "$DMG_STAGING_DIR"
+rm -rf "$DMG_STAGING_DIR"/*
+
+cp -R "$APP_PATH" "$DMG_STAGING_DIR/"
+ln -s /Applications "$DMG_STAGING_DIR/Applications"
+
+hdiutil create -volname "Skill Lake" -srcfolder "$DMG_STAGING_DIR" -ov -format UDZO "$DMG_NAME"
+
+# Clean up staging directory
+rm -rf "$DMG_STAGING_DIR"
 
 echo "Committing and Tagging in Git..."
 git add -u
