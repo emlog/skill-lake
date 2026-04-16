@@ -38,11 +38,6 @@ brew tap emlog/skill-lake https://github.com/emlog/skill-lake
 brew install --cask skill-lake
 ```
 
-*注：由于应用暂未申请收费的开发者授权，安装后如果在打开时被 macOS 的 Gatekeeper 安全检查拦截（提示“已损坏”或“无法验证开发者”），请在终端运行以下命令以手动解除隔离限制，之后便可以无缝双击打开：*
-```bash
-xattr -cr "/Applications/Skill Lake.app"
-```
-
 ### 源码编译运行
 
 1. **克隆项目源码**：
