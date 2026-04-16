@@ -42,6 +42,12 @@ class _SkillStorePageState extends State<SkillStorePage> {
   /// 是否正在刷新（用于区分首次加载和刷新操作）
   bool _refreshing = false;
 
+  /// 错误信息（仅在真正遇到异常时显示）
+  String? _errorMessage;
+
+  /// 对于需要手动触发的源，标识是否已经发起过搜索
+  bool _hasSearched = false;
+
   /// 当前源的 Skill 列表
   List<StoreSkillItem> _items = <StoreSkillItem>[];
 
@@ -72,6 +78,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
         _items = <StoreSkillItem>[];
         _loading = false;
         _refreshing = false;
+        _errorMessage = null;
       });
       return;
     }
@@ -79,20 +86,33 @@ class _SkillStorePageState extends State<SkillStorePage> {
     setState(() {
       _loading = true;
       _refreshing = forceRefresh;
+      _errorMessage = null;
+      _hasSearched = true;
     });
-    final List<StoreSkillItem> items =
-        await _storeService.fetchSkillsFromSource(
-      src as GitHubSkillSource,
-      forceRefresh: forceRefresh,
-    );
-    if (!mounted) {
-      return;
+    try {
+      final List<StoreSkillItem> items =
+          await _storeService.fetchSkillsFromSource(
+        src as GitHubSkillSource,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _items = items;
+        _loading = false;
+        _refreshing = false;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loading = false;
+        _refreshing = false;
+        _errorMessage = e.toString();
+      });
     }
-    setState(() {
-      _items = items;
-      _loading = false;
-      _refreshing = false;
-    });
   }
 
   /// 切换仓库源
@@ -102,6 +122,9 @@ class _SkillStorePageState extends State<SkillStorePage> {
     }
     setState(() {
       _selectedSourceIndex = index;
+      _hasSearched = false;
+      _errorMessage = null;
+      _items = <StoreSkillItem>[];
     });
     _loadStoreSkills();
   }
@@ -129,18 +152,31 @@ class _SkillStorePageState extends State<SkillStorePage> {
           _SkillsmpSearchHeader(
             settingsService: _settingsService,
             onSearch: (String query, String apiKey) async {
+              if (query.isEmpty) return;
               setState(() {
                 _loading = true;
+                _hasSearched = true;
+                _errorMessage = null;
               });
-              final List<StoreSkillItem> items =
-                  await _storeService.searchSkillsmp(query, apiKey);
-              if (!mounted) {
-                return;
+              try {
+                final List<StoreSkillItem> items =
+                    await _storeService.searchSkillsmp(query, apiKey);
+                if (!mounted) {
+                  return;
+                }
+                setState(() {
+                  _items = items;
+                  _loading = false;
+                });
+              } catch (e) {
+                if (!mounted) {
+                  return;
+                }
+                setState(() {
+                  _loading = false;
+                  _errorMessage = e.toString();
+                });
               }
-              setState(() {
-                _items = items;
-                _loading = false;
-              });
             },
           ),
           const SizedBox(height: 12),
@@ -162,7 +198,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
                     ],
                   ),
                 )
-              : _items.isEmpty
+              : _errorMessage != null
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -170,21 +206,45 @@ class _SkillStorePageState extends State<SkillStorePage> {
                           Icon(
                             Icons.cloud_off_outlined,
                             size: 48,
-                            color: color.onSurfaceVariant.withValues(alpha: 0.4),
+                            color: color.error.withValues(alpha: 0.6),
                           ),
                           const SizedBox(height: 12),
-                          const Text('暂无可用 Skill，请检查网络后点击刷新'),
-                          const SizedBox(height: 8),
-                          FilledButton.tonalIcon(
-                            onPressed: () =>
-                                _loadStoreSkills(forceRefresh: true),
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('重试'),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              '网络请求失败：$_errorMessage',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: color.error),
+                            ),
                           ),
+                          const SizedBox(height: 16),
+                          if (_currentSource is! SkillsmpSkillSource)
+                            FilledButton.tonalIcon(
+                              onPressed: () => _loadStoreSkills(forceRefresh: true),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('重试'),
+                            ),
                         ],
                       ),
                     )
-                  : ListView.separated(
+                  : (!_hasSearched)
+                      ? const SizedBox.shrink()
+                      : _items.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.inbox_outlined,
+                                    size: 48,
+                                    color: color.onSurfaceVariant.withValues(alpha: 0.4),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text('没有找到符合条件的 Skill'),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
                       itemCount: _items.length,
                       separatorBuilder: (_, __) =>
                           const SizedBox(height: 8),
@@ -751,19 +811,23 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
         ),
         const SizedBox(width: 12),
         SizedBox(
-          height: 48,
+          height: 40,
           child: FilledButton.icon(
             onPressed: _onSearch,
-            icon: const Icon(Icons.search),
+            icon: const Icon(Icons.search, size: 18),
             label: const Text('搜索'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
           ),
         ),
         const SizedBox(width: 8),
         SizedBox(
-          height: 48,
-          width: 48,
+          height: 40,
+          width: 40,
           child: IconButton.filledTonal(
             onPressed: _openSettingsDialog,
+            iconSize: 20,
             icon: const Icon(Icons.settings),
             tooltip: 'Skillsmp 配置',
           ),
