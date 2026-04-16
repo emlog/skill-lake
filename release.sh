@@ -5,8 +5,16 @@ export PATH="/opt/homebrew/bin:$PATH"
 echo "Building Flutter macOS in release mode..."
 flutter build macos --release
 
+# Extract version from pubspec.yaml
+VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
+if [ -z "$VERSION" ]; then
+    echo "Error: Could not extract version from pubspec.yaml"
+    exit 1
+fi
+echo "Extracted version: $VERSION"
+
 APP_PATH="build/macos/Build/Products/Release/Skill Lake.app"
-DMG_NAME="SkillLake-1.1.0.dmg"
+DMG_NAME="SkillLake-${VERSION}.dmg"
 
 if [ ! -d "$APP_PATH" ]; then
     echo "Error: App build failed or path not found at $APP_PATH"
@@ -33,19 +41,19 @@ rm -rf "$DMG_STAGING_DIR"
 
 echo "Committing and Tagging in Git..."
 git add -u
-git diff --cached --quiet || git commit -m "chore: release 1.1.0"
-git tag -f 1.1.0
+git diff --cached --quiet || git commit -m "chore: release ${VERSION}"
+git tag -f "${VERSION}"
 git push origin main
-git push origin 1.1.0 -f
+git push origin "${VERSION}" -f
 
 echo "Creating GitHub Release..."
 # Make sure to handle if the release already exists
-gh release view 1.1.0 >/dev/null 2>&1
+gh release view "${VERSION}" >/dev/null 2>&1
 if [ $? -eq 0 ]; then
-  echo "Release 1.1.0 already exists. Overwriting asset..."
-  gh release upload 1.1.0 "$DMG_NAME" --clobber
+  echo "Release ${VERSION} already exists. Overwriting asset..."
+  gh release upload "${VERSION}" "$DMG_NAME" --clobber
 else
-  gh release create 1.1.0 "$DMG_NAME" --title "Skill Lake 1.1.0" --notes "UI 全新改版，优化了视觉层级和使用体验。"
+  gh release create "${VERSION}" "$DMG_NAME" --title "Skill Lake ${VERSION}" --notes "Release version ${VERSION}"
 fi
 
 echo "Release successfully completed!"
