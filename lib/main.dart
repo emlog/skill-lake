@@ -15,51 +15,65 @@ void main() {
 class SkillLakeApp extends StatelessWidget {
   const SkillLakeApp({super.key});
 
-  /// 构建通用主题的辅助方法，浅色/深色共享相同的结构定义。
-  ///
-  /// [brightness] 决定生成浅色还是深色主题。
-  /// 所有颜色均由 Material 3 的 ColorScheme.fromSeed 推导，
-  /// 不硬编码任何色值，确保跟随系统外观自适应。
   static ThemeData _buildTheme(Brightness brightness) {
-    // macOS 原生系统蓝色 (Apple System Blue)
-    const Color seedColor = Color(0xFF007AFF);
+    // 采用中性偏冷的深空黑作为种子色，接近 ChatGPT 新版的极简色调
+    const Color seedColor = Color(0xFF171717);
     final ColorScheme colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
+      primary: brightness == Brightness.light ? const Color(0xFF171717) : const Color(0xFFECECEC),
     );
 
     return ThemeData(
       colorScheme: colorScheme,
       useMaterial3: true,
+      scaffoldBackgroundColor: brightness == Brightness.light
+          ? const Color(0xFFFFFFFF)
+          : const Color(0xFF212121),
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
+        color: colorScheme.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          // 使用 ColorScheme 语义化边框色，自动适配深浅模式
-          side: BorderSide(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(10), // 更收敛的小圆角
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            width: 0.5, // 极细边框
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceContainerLowest,
+        fillColor: brightness == Brightness.light
+            ? const Color(0xFFF9F9F9)
+            : const Color(0xFF2C2C2C),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(
+            color: colorScheme.primary.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
       ),
     );

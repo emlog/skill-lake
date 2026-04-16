@@ -174,18 +174,30 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                             skill.installedPath?.isNotEmpty == true;
                         final ColorScheme color = Theme.of(context).colorScheme;
                         return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: color.outlineVariant.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.4),
+                              width: 0.5,
+                            ),
+                          ),
                           child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                            leading: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: color.primaryContainer,
+                            leading: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : color.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                               child: Icon(
                                 Icons.extension_outlined,
                                 size: 18,
-                                color: color.onPrimaryContainer,
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : color.onSurfaceVariant,
                               ),
                             ),
                             title: GestureDetector(
@@ -198,37 +210,46 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                                       : '${skill.name} (${skill.version})',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    color: color.primary,
+                                    fontSize: 15,
+                                    color: color.onSurface,
                                     decoration: TextDecoration.underline,
-                                    decorationColor: color.primary.withValues(alpha: 0.5),
+                                    decorationColor: color.onSurfaceVariant.withValues(alpha: 0.5),
                                   ),
                                 ),
                               ),
                             ),
-                            subtitle: Text(
-                              skill.description.trim().isEmpty
-                                  ? '暂无描述'
-                                  : skill.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: color.onSurfaceVariant,
-                                  ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                skill.description.trim().isEmpty
+                                    ? '暂无描述'
+                                    : skill.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: color.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
+                              ),
                             ),
                             isThreeLine: true,
                             trailing: Wrap(
-                              spacing: 8,
+                              spacing: 4,
                               children: <Widget>[
                                 IconButton(
                                   tooltip: '查看',
+                                  iconSize: 20,
                                   onPressed: () => _onView(skill),
                                   icon: const Icon(Icons.more_horiz),
+                                  color: color.onSurfaceVariant,
                                 ),
                                 IconButton(
                                   tooltip: '删除',
+                                  iconSize: 20,
                                   onPressed:
                                       canDelete ? () => _onDelete(skill) : null,
                                   icon: const Icon(Icons.delete_outline),
+                                  color: color.onSurfaceVariant,
                                 ),
                               ],
                             ),
@@ -414,49 +435,63 @@ class _InlineAgentFilterBar extends StatelessWidget {
     }
 
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         color: Theme.of(context).colorScheme.surfaceContainerLow,
       ),
-      child: ListView.separated(
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: agents.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (BuildContext context, int index) {
           final AgentTarget agent = agents[index];
           final bool isDefault = defaultAgent != null && defaultAgent!.id == agent.id;
-          return ChoiceChip(
-            selected: index == selectedIndex,
-            onSelected: (_) => onChanged(index),
-            label: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(agent.displayName),
-                if (isDefault) ...<Widget>[
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '默认',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Theme.of(context).colorScheme.onPrimary,
+          final bool selected = index == selectedIndex;
+          return Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: ChoiceChip(
+              selected: selected,
+              onSelected: (_) => onChanged(index),
+              showCheckmark: false,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              side: BorderSide.none,
+              backgroundColor: Colors.transparent,
+              selectedColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(agent.displayName),
+                  if (isDefault) ...<Widget>[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '默认',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
+              labelStyle: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              avatar: Icon(_agentIcon(agent.icon), size: 14, color: selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant),
             ),
-            avatar: Icon(_agentIcon(agent.icon), size: 16),
           );
         },
       ),

@@ -427,9 +427,9 @@ class _SourceSwitcher extends StatelessWidget {
     final ColorScheme color = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         color: color.surfaceContainerLow,
       ),
       child: Row(
@@ -439,32 +439,46 @@ class _SourceSwitcher extends StatelessWidget {
             final SkillSource src = sources[index];
             final bool selected = index == selectedIndex;
             return Padding(
-              padding: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.only(right: 4),
               child: ChoiceChip(
                 selected: selected,
                 onSelected: (_) => onChanged(index),
-                avatar: Icon(
-                  Icons.inventory_2_outlined,
-                  size: 16,
-                  color: selected ? color.onPrimary : color.onSurfaceVariant,
+                showCheckmark: false,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                side: BorderSide.none,
+                backgroundColor: Colors.transparent,
+                selectedColor: color.surfaceContainerHigh,
+                labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 14,
+                      color: selected ? color.onSurface : color.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(src.displayName),
+                  ],
                 ),
-                label: Text(src.displayName),
                 labelStyle: TextStyle(
-                  fontSize: 12,
-                  color: selected ? null : color.onSurfaceVariant,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: selected ? color.onSurface : color.onSurfaceVariant,
                 ),
               ),
             );
           }),
           const Spacer(),
           // 刷新按钮
-          IconButton.filledTonal(
+          IconButton(
             onPressed: isLoading ? null : onRefresh,
             tooltip: '刷新缓存',
+            iconSize: 18,
             icon: isRefreshing
                 ? const SizedBox(
-                    width: 18,
-                    height: 18,
+                    width: 14,
+                    height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh),
@@ -500,24 +514,28 @@ class _StoreSkillCard extends StatelessWidget {
 
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         onTap: onViewDetail,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               // 图标
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: color.tertiaryContainer,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : color.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Icon(
                   Icons.auto_awesome_outlined,
-                  size: 20,
-                  color: color.onTertiaryContainer,
+                  size: 18,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : color.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               // 内容
               Expanded(
                 child: Column(
@@ -530,8 +548,8 @@ class _StoreSkillCard extends StatelessWidget {
                             item.skill.name,
                             style: Theme.of(context)
                                 .textTheme
-                                .bodyLarge
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                                .bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600, color: color.onSurface),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -543,24 +561,25 @@ class _StoreSkillCard extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: color.surfaceContainerHigh,
-                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: color.outlineVariant.withValues(alpha: 0.5)),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             item.source.displayName,
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
-                                ?.copyWith(color: color.onSurfaceVariant),
+                                ?.copyWith(color: color.onSurfaceVariant, fontSize: 10),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       desc,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: color.onSurfaceVariant,
+                            height: 1.4,
                           ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -568,21 +587,22 @@ class _StoreSkillCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               // 安装按钮
               isInstalling
                   ? const SizedBox(
-                      width: 36,
-                      height: 36,
+                      width: 32,
+                      height: 32,
                       child: Padding(
                         padding: EdgeInsets.all(8),
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )
-                  : IconButton.filledTonal(
+                  : IconButton(
                       onPressed: onInstall,
                       tooltip: '安装',
-                      icon: const Icon(Icons.download_rounded, size: 20),
+                      iconSize: 20,
+                      icon: Icon(Icons.download_rounded, color: color.onSurfaceVariant),
                     ),
             ],
           ),

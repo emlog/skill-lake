@@ -73,40 +73,42 @@ class _AgentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme color = Theme.of(context).colorScheme;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isDefault = agent.isDefault;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          // 默认 Agent 使用主色高亮边框
           color: isDefault
-              ? color.primary.withValues(alpha: 0.6)
-              : color.outlineVariant.withValues(alpha: 0.45),
-          width: isDefault ? 1.5 : 1.0,
+              ? color.primary.withValues(alpha: 0.8)
+              : color.outlineVariant.withValues(alpha: isDark ? 0.2 : 0.4),
+          width: isDefault ? 1.0 : 0.5,
         ),
         color: isDefault
-            ? color.primaryContainer.withValues(alpha: 0.18)
-            : color.surfaceContainerLowest,
+            ? (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.02))
+            : color.surface,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: <Widget>[
             // Agent 图标头像
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: isDefault
-                  ? color.primary.withValues(alpha: 0.18)
-                  : color.primaryContainer,
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: isDefault ? color.primary : color.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(6),
+              ),
               child: Icon(
                 Icons.smart_toy_outlined,
                 size: 18,
-                color: isDefault ? color.primary : color.onPrimaryContainer,
+                color: isDefault ? color.onPrimary : color.onSurfaceVariant,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             // Agent 名称 + 副标题
             Expanded(
               child: Column(
@@ -116,12 +118,13 @@ class _AgentCard extends StatelessWidget {
                     children: <Widget>[
                       Text(
                         agent.displayName,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontWeight: isDefault ? FontWeight.w600 : null,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: isDefault ? FontWeight.w600 : FontWeight.w500,
+                              color: color.onSurface,
                             ),
                       ),
                       if (isDefault) ...<Widget>[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         // 默认标签角标
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -129,15 +132,15 @@ class _AgentCard extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: color.primary,
-                            borderRadius: BorderRadius.circular(999),
+                            color: isDark ? Colors.white24 : Colors.black12,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             '默认',
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
-                                ?.copyWith(color: color.onPrimary),
+                                ?.copyWith(color: color.onSurface, fontSize: 10),
                           ),
                         ),
                       ],
@@ -151,16 +154,22 @@ class _AgentCard extends StatelessWidget {
               message: isDefault ? '当前默认 Agent' : '设为默认 Agent',
               child: IconButton(
                 onPressed: onSetDefault,
+                iconSize: 20,
                 icon: Icon(
                   isDefault ? Icons.star_rounded : Icons.star_border_rounded,
-                  color: isDefault ? color.primary : color.onSurfaceVariant,
+                  color: isDefault ? color.primary : color.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
               ),
             ),
-            // 启用/禁用开关（默认 Agent 时仍可操作，但建议保持启用）
-            Switch(
-              value: agent.enabled,
-              onChanged: onToggleEnabled,
+            // 启用/禁用开关
+            Transform.scale(
+              scale: 0.85,
+              child: Switch(
+                value: agent.enabled,
+                onChanged: onToggleEnabled,
+                activeColor: color.onPrimary,
+                activeTrackColor: color.primary,
+              ),
             ),
           ],
         ),
