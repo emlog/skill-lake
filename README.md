@@ -34,7 +34,7 @@ Skill Lake 会自动扫描并管理以下主流助手在本地的扩展目录：
 
 ### Brew 安装 (推荐)
 ```bash
-brew tap emlog/skill-lake
+brew tap emlog/skill-lake https://github.com/emlog/skill-lake
 brew install --cask --no-quarantine skill-lake
 ```
 *注：由于应用暂未申请收费的开发者授权，使用 `--no-quarantine` 参数可以跳过 macOS 的 Gatekeeper 安全检查，安装后直接无缝双击打开，免去系统安全拦截拦截的繁琐手动授权配置。*
