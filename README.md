@@ -29,17 +29,22 @@ Skill Lake 会自动扫描并管理以下主流助手在本地的扩展目录：
 
 本项目为 Flutter macOS 桌面端应用，请在开始前确保您已准备好 Flutter macOS 开发环境。
 
-### 依赖环境
-
+### 运行环境
 - macOS 系统
-- [Flutter SDK](https://flutter.dev/docs/get-started/install/macos) >= 3.x
 
-### 编译与运行
+### Brew 安装 (推荐)
+```bash
+brew tap emlog/skill-lake
+brew install --cask --no-quarantine skill-lake
+```
+*注：由于应用暂未申请收费的开发者授权，使用 `--no-quarantine` 参数可以跳过 macOS 的 Gatekeeper 安全检查，安装后直接无缝双击打开，免去系统安全拦截拦截的繁琐手动授权配置。*
+
+### 源码编译运行
 
 1. **克隆项目源码**：
 
    ```bash
-   git clone https://github.com/your-username/skill-lake.git
+   git clone https://github.com/emlog/skill-lake.git
    cd skill-lake
    ```
 

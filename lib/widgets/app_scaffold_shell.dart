@@ -160,7 +160,7 @@ class AppScaffoldShell extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '1.1.1',
+                        '1.1.2',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color.onSurfaceVariant),
                       ),
                       const SizedBox(height: 24),
