@@ -100,13 +100,6 @@ class AppScaffoldShell extends StatelessWidget {
                               size: 18,
                               color: color.onSurfaceVariant.withValues(alpha: 0.7),
                             ),
-                            const SizedBox(width: 12),
-                            Text(
-                              '关于应用',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: color.onSurfaceVariant.withValues(alpha: 0.8),
-                              ),
-                            ),
                           ],
                         ),
                       ),

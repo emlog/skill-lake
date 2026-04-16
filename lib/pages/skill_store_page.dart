@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/agent_target.dart';
 import '../services/settings_service.dart';
@@ -759,11 +760,20 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
                   children: <Widget>[
                     const Text('获取 API Key：'),
                     Expanded(
-                      child: SelectableText(
-                        'https://skillsmp.com/docs/api',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          decoration: TextDecoration.underline,
+                      child: InkWell(
+                        onTap: () async {
+                          final Uri url = Uri.parse('https://skillsmp.com/docs/api');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url);
+                          }
+                        },
+                        child: Text(
+                          'https://skillsmp.com/docs/api',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            decoration: TextDecoration.underline,
+                            decorationColor: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       ),
                     ),
@@ -842,15 +852,11 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
           ),
         ),
         const SizedBox(width: 8),
-        SizedBox(
-          height: 40,
-          width: 40,
-          child: IconButton.filledTonal(
-            onPressed: _openSettingsDialog,
-            iconSize: 20,
-            icon: const Icon(Icons.settings),
-            tooltip: 'Skillsmp 配置',
-          ),
+        IconButton(
+          onPressed: _openSettingsDialog,
+          tooltip: 'Skillsmp 配置',
+          iconSize: 18,
+          icon: const Icon(Icons.settings),
         ),
       ],
     );

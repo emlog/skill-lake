@@ -120,21 +120,24 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
             // 仅在当前 Agent 不是默认 Agent 且存在默认 Agent 时，显示同步按钮
             if (widget.defaultAgent != null &&
                 widget.defaultAgent!.id != widget.selectedAgent.id) ...<Widget>[
-              IconButton.filledTonal(
+              IconButton(
                 tooltip: '从默认 Agent（${widget.defaultAgent!.displayName}）同步 Skill',
+                iconSize: 18,
                 onPressed: _onSyncFromDefault,
                 icon: const Icon(Icons.sync_alt_outlined),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
             ],
-            IconButton.filledTonal(
+            IconButton(
               tooltip: '上传安装',
+              iconSize: 18,
               onPressed: _onUploadInstall,
               icon: const Icon(Icons.upload),
             ),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
+            const SizedBox(width: 4),
+            IconButton(
               tooltip: '刷新',
+              iconSize: 18,
               onPressed: _loadSkills,
               icon: const Icon(Icons.refresh),
             ),
