@@ -36,7 +36,7 @@ Skill Lake 会自动扫描并管理以下主流助手在本地的扩展目录：
 
 ### Brew 安装 (推荐)
 ```bash
-brew tap emlog/skill-lake https://github.com/emlog/skill-lake
+brew tap emlog/skill-lake
 brew install --cask skill-lake
 ```
 

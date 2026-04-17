@@ -39,26 +39,26 @@ hdiutil create -volname "Skill Lake" -srcfolder "$DMG_STAGING_DIR" -ov -format U
 # Clean up staging directory
 rm -rf "$DMG_STAGING_DIR"
 
-echo "Updating Homebrew Cask..."
-mkdir -p Casks
-SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')
-cat <<EOF > Casks/skill-lake.rb
-cask "skill-lake" do
-  version "${VERSION}"
-  sha256 "${SHA}"
+# echo "Updating Homebrew Cask..."
+# mkdir -p Casks
+# SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')
+# cat <<EOF > Casks/skill-lake.rb
+# cask "skill-lake" do
+#   version "${VERSION}"
+#   sha256 "${SHA}"
 
-  url "https://github.com/emlog/skill-lake/releases/download/${VERSION}/${DMG_NAME}"
-  name "Skill Lake"
-  desc "A local AI agent skill manager app for macOS"
-  homepage "https://github.com/emlog/skill-lake"
+#   url "https://github.com/emlog/skill-lake/releases/download/${VERSION}/${DMG_NAME}"
+#   name "Skill Lake"
+#   desc "A local AI agent skill manager app for macOS"
+#   homepage "https://github.com/emlog/skill-lake"
 
-  app "Skill Lake.app"
-end
-EOF
+#   app "Skill Lake.app"
+# end
+# EOF
 
 echo "Committing and Tagging in Git..."
 git add -u
-git add Casks/skill-lake.rb
+# git add Casks/skill-lake.rb
 git diff --cached --quiet || git commit -m "chore: release ${VERSION}"
 git tag -f "${VERSION}"
 git push origin main
@@ -75,3 +75,41 @@ else
 fi
 
 echo "Release successfully completed!"
+
+echo "Updating Homebrew Tap..."
+TAP_REPO="emlog/homebrew-skill-lake"
+TAP_DIR="homebrew-skill-lake"
+SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')
+
+gh repo view "$TAP_REPO" >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "Creating tap repository $TAP_REPO..."
+  gh repo create "$TAP_REPO" --public --description "Homebrew tap for Skill Lake"
+fi
+
+rm -rf "$TAP_DIR"
+gh repo clone "$TAP_REPO" "$TAP_DIR"
+mkdir -p "$TAP_DIR/Casks"
+
+cat <<EOF > "$TAP_DIR/Casks/skill-lake.rb"
+cask "skill-lake" do
+  version "${VERSION}"
+  sha256 "${SHA}"
+
+  url "https://github.com/emlog/skill-lake/releases/download/${VERSION}/${DMG_NAME}"
+  name "Skill Lake"
+  desc "A local AI agent skill manager app for macOS"
+  homepage "https://github.com/emlog/skill-lake"
+
+  app "Skill Lake.app"
+end
+EOF
+
+cd "$TAP_DIR"
+git add Casks/skill-lake.rb
+git diff --cached --quiet || git commit -m "update skill-lake to ${VERSION}"
+git push origin main
+cd ..
+rm -rf "$TAP_DIR"
+
+echo "Homebrew tap updated!"
