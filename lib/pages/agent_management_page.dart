@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/agent_target.dart';
 
@@ -76,100 +77,185 @@ class _AgentCard extends StatelessWidget {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isDefault = agent.isDefault;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.outlineVariant.withValues(alpha: isDark ? 0.2 : 0.4),
-          width: 0.5,
+    return GestureDetector(
+      onTap: () => _showAgentDetails(context, agent),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: color.outlineVariant.withValues(alpha: isDark ? 0.2 : 0.4),
+            width: 0.5,
+          ),
+          color: color.surface,
         ),
-        color: color.surface,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: <Widget>[
-            // Agent 图标头像
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: isDefault ? color.primary : color.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(
-                Icons.smart_toy_outlined,
-                size: 18,
-                color: isDefault ? color.onPrimary : color.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 16),
-            // Agent 名称 + 副标题
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Text(
-                        agent.displayName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: isDefault ? FontWeight.w600 : FontWeight.w500,
-                              color: color.onSurface,
-                            ),
-                      ),
-                      if (isDefault) ...<Widget>[
-                        const SizedBox(width: 8),
-                        // 默认标签角标
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white24 : Colors.black12,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            '默认',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(color: color.onSurface, fontSize: 10),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // 设为默认按钮
-            Tooltip(
-              message: isDefault ? '当前默认 Agent' : '设为默认 Agent',
-              child: IconButton(
-                onPressed: onSetDefault,
-                iconSize: 20,
-                icon: Icon(
-                  isDefault ? Icons.star_rounded : Icons.star_border_rounded,
-                  color: isDefault ? color.primary : color.onSurfaceVariant.withValues(alpha: 0.5),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: <Widget>[
+              // Agent 图标头像
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isDefault ? color.primary : color.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  Icons.smart_toy_outlined,
+                  size: 18,
+                  color: isDefault ? color.onPrimary : color.onSurfaceVariant,
                 ),
               ),
-            ),
-            // 启用/禁用开关
-            Transform.scale(
-              scale: 0.85,
-              child: Switch(
-                value: agent.enabled,
-                onChanged: onToggleEnabled,
-                activeColor: color.onPrimary,
-                activeTrackColor: color.primary,
+              const SizedBox(width: 16),
+              // Agent 名称 + 副标题
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Text(
+                          agent.displayName,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: isDefault ? FontWeight.w600 : FontWeight.w500,
+                                color: color.onSurface,
+                              ),
+                        ),
+                        if (isDefault) ...<Widget>[
+                          const SizedBox(width: 8),
+                          // 默认标签角标
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white24 : Colors.black12,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '默认',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: color.onSurface, fontSize: 10),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              // 设为默认按钮
+              Tooltip(
+                message: isDefault ? '当前默认 Agent' : '设为默认 Agent',
+                child: IconButton(
+                  onPressed: onSetDefault,
+                  iconSize: 20,
+                  icon: Icon(
+                    isDefault ? Icons.star_rounded : Icons.star_border_rounded,
+                    color: isDefault ? color.primary : color.onSurfaceVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              // 启用/禁用开关
+              Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: agent.enabled,
+                  onChanged: onToggleEnabled,
+                  activeColor: color.onPrimary,
+                  activeTrackColor: color.primary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showAgentDetails(BuildContext context, AgentTarget agent) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('${agent.displayName}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _DetailRow(
+                label: '主页',
+                value: agent.homepageUrl ?? '无',
+                isLink: agent.homepageUrl != null && agent.homepageUrl!.isNotEmpty,
+              ),
+              const SizedBox(height: 8),
+              _DetailRow(
+                label: 'Skill 目录',
+                value: agent.skillsDirectory ?? '未配置或不支持',
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('关闭'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.isLink = false,
+  });
+
+  final String label;
+  final String value;
+  final bool isLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 4),
+        if (isLink && value != '无')
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => launchUrl(Uri.parse(value)),
+              child: Text(
+                value,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                      decorationColor: colorScheme.primary,
+                    ),
+              ),
+            ),
+          )
+        else
+          SelectableText(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+      ],
     );
   }
 }

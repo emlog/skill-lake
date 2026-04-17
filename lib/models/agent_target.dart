@@ -6,6 +6,8 @@ class AgentTarget {
     required this.icon,
     this.enabled = true,
     this.isDefault = false,
+    this.homepageUrl,
+    this.skillsDirectory,
   });
 
   final String id;
@@ -18,12 +20,20 @@ class AgentTarget {
   /// 是否为默认 Agent；同一时刻只能有一个 Agent 为默认
   final bool isDefault;
 
+  /// 主页地址
+  final String? homepageUrl;
+
+  /// skill 目录
+  final String? skillsDirectory;
+
   AgentTarget copyWith({
     String? id,
     String? displayName,
     String? icon,
     bool? enabled,
     bool? isDefault,
+    String? homepageUrl,
+    String? skillsDirectory,
   }) {
     return AgentTarget(
       id: id ?? this.id,
@@ -31,6 +41,8 @@ class AgentTarget {
       icon: icon ?? this.icon,
       enabled: enabled ?? this.enabled,
       isDefault: isDefault ?? this.isDefault,
+      homepageUrl: homepageUrl ?? this.homepageUrl,
+      skillsDirectory: skillsDirectory ?? this.skillsDirectory,
     );
   }
 }

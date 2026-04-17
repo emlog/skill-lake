@@ -17,13 +17,15 @@
 
 Skill Lake 会自动扫描并管理以下主流助手在本地的扩展目录：
 
-| AI 编程助手 / Agent | 默认本地技能目录映射 |
-| :--- | :--- |
-| **Cursor** | `~/.cursor/skills/` |
-| **Claude Code** | `~/.claude/skills/` |
-| **Codex CLI** | `~/.codex/skills/` |
-| **Antigravity** | `~/.gemini/antigravity/skills/` |
-| **Trae** | `~/.trae/skills/` |
+| AI 工具 | 个人级 Skills 路径 | 官方网站 |
+| :--- | :--- | :--- |
+| **Cursor** | `~/.cursor/skills/` | <https://cursor.com/> |
+| **Claude Code** | `~/.claude/skills/` | <https://claude.com/product/claude-code> |
+| **Codex** | `~/.codex/skills/` | <https://openai.com/codex> |
+| **Trae** | `~/.trae/skills/` | <https://www.trae.ai/> |
+| **Gemini CLI** | `~/.gemini/skills/` | <https://geminicli.com/> |
+| **Antigravity** | `~/.gemini/antigravity/skills/` | <https://antigravity.google/> |
+| **GitHub Copilot** | `~/.copilot/skills/` | <https://github.com/features/copilot> |
 
 ## 🚀 快速开始
 

@@ -30,6 +30,8 @@ class AgentService {
         icon: item['icon'] as String? ?? 'robot_2',
         enabled: item['enabled'] as bool? ?? true,
         isDefault: item['isDefault'] as bool? ?? false,
+        homepageUrl: item['homepageUrl'] as String?,
+        skillsDirectory: item['skillsDirectory'] as String?,
       );
     }).toList();
 
@@ -49,6 +51,16 @@ class AgentService {
       if (!existingIds.contains(builtIn.id)) {
         // 新增的 Agent 不设为默认，用户可手动切换
         agents.add(builtIn.copyWith(isDefault: false));
+      } else {
+        // 补充可能因旧版本缓存导致缺失的属性（如：主页和技能目录）
+        final int index = agents.indexWhere((AgentTarget a) => a.id == builtIn.id);
+        if (index != -1) {
+          final AgentTarget existing = agents[index];
+          agents[index] = existing.copyWith(
+            homepageUrl: builtIn.homepageUrl ?? existing.homepageUrl,
+            skillsDirectory: builtIn.skillsDirectory ?? existing.skillsDirectory,
+          );
+        }
       }
     }
 
@@ -67,6 +79,8 @@ class AgentService {
                   'icon': e.icon,
                   'enabled': e.enabled,
                   'isDefault': e.isDefault,
+                  'homepageUrl': e.homepageUrl,
+                  'skillsDirectory': e.skillsDirectory,
                 })
             .toList(),
       ),
@@ -100,10 +114,50 @@ class AgentService {
           displayName: 'Cursor',
           icon: 'cursor',
           isDefault: true,
+          homepageUrl: 'https://cursor.com/',
+          skillsDirectory: '~/.cursor/skills/',
         ),
-        AgentTarget(id: 'claude_code', displayName: 'Claude Code', icon: 'bolt'),
-        AgentTarget(id: 'codex', displayName: 'Codex', icon: 'terminal'),
-        AgentTarget(id: 'trae', displayName: 'Trae', icon: 'sparkles'),
-        AgentTarget(id: 'antigravity', displayName: 'Antigravity', icon: 'gravity'),
+        AgentTarget(
+          id: 'claude_code', 
+          displayName: 'Claude Code', 
+          icon: 'bolt',
+          homepageUrl: 'https://claude.com/product/claude-code',
+          skillsDirectory: '~/.claude/skills/',
+        ),
+        AgentTarget(
+          id: 'codex',
+          displayName: 'Codex',
+          icon: 'terminal',
+          homepageUrl: 'https://openai.com/codex',
+          skillsDirectory: '~/.codex/skills/',
+        ),
+        AgentTarget(
+          id: 'trae',
+          displayName: 'Trae',
+          icon: 'sparkles',
+          homepageUrl: 'https://www.trae.ai/',
+          skillsDirectory: '~/.trae/skills/',
+        ),
+        AgentTarget(
+          id: 'gemini_cli',
+          displayName: 'Gemini CLI',
+          icon: 'terminal',
+          homepageUrl: 'https://geminicli.com/',
+          skillsDirectory: '~/.gemini/skills/',
+        ),
+        AgentTarget(
+          id: 'antigravity', 
+          displayName: 'Antigravity', 
+          icon: 'gravity',
+          homepageUrl: 'https://antigravity.google/',
+          skillsDirectory: '~/.gemini/antigravity/skills/',
+        ),
+        AgentTarget(
+          id: 'github_copilot',
+          displayName: 'GitHub Copilot',
+          icon: 'github',
+          homepageUrl: 'https://github.com/features/copilot',
+          skillsDirectory: '~/.copilot/skills/',
+        ),
       ];
 }

@@ -434,7 +434,9 @@ class SkillService {
   /// - Claude Code  : ~/.claude/skills/
   /// - Codex CLI    : ~/.codex/skills/
   /// - Trae         : ~/.trae/skills/
+  /// - Gemini CLI   : ~/.gemini/skills/
   /// - Antigravity  : ~/.gemini/antigravity/skills/
+  /// - GitHub Copilot : ~/.copilot/skills/
   Map<String, List<String>> _discoveryRoots(String home) {
     return <String, List<String>>{
       // Cursor 官方 skills 目录
@@ -457,10 +459,18 @@ class SkillService {
         '$home/.trae/skills',
         '$home/Library/Application Support/Trae/skills',
       ],
+      // Gemini CLI 官方 skills 目录
+      'gemini_cli': <String>[
+        '$home/.gemini/skills',
+      ],
       // Antigravity 官方 skills 目录（位于 ~/.gemini/antigravity/skills/）
       'antigravity': <String>[
         '$home/.gemini/antigravity/skills',
         '$home/Library/Application Support/Antigravity/skills',
+      ],
+      // GitHub Copilot 官方 skills 目录
+      'github_copilot': <String>[
+        '$home/.copilot/skills',
       ],
     };
   }
