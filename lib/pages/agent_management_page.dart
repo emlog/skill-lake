@@ -28,8 +28,20 @@ class AgentManagementPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: <Widget>[
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: '添加自定义 Agent',
+              onPressed: () => _showAddAgentDialog(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: agents.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (BuildContext context, int index) {
@@ -46,11 +58,159 @@ class AgentManagementPage extends StatelessWidget {
                 onSetDefault: item.isDefault
                     ? null // 已是默认则禁用按钮
                     : () => onDefaultAgentChanged(item.id),
+                onEdit: () => _editCustomAgent(context, index, item),
+                onDelete: () => _deleteCustomAgent(context, index, item),
               );
             },
           ),
         ),
       ],
+    );
+  }
+
+  void _showAddAgentDialog(BuildContext context) {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController dirController = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('添加自定义 Agent'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Agent 名称',
+                  hintText: '例如：My Custom Agent',
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: dirController,
+                decoration: const InputDecoration(
+                  labelText: 'Skill 目录',
+                  hintText: '例如：~/.myagent/skills/',
+                ),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final String name = nameController.text.trim();
+                final String dir = dirController.text.trim();
+                if (name.isNotEmpty && dir.isNotEmpty) {
+                  final String newId = 'custom_${DateTime.now().millisecondsSinceEpoch}';
+                  final AgentTarget newAgent = AgentTarget(
+                    id: newId,
+                    displayName: name,
+                    icon: 'robot_2',
+                    skillsDirectory: dir,
+                  );
+                  onAgentsChanged(<AgentTarget>[...agents, newAgent]);
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+              child: const Text('添加'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _editCustomAgent(BuildContext context, int index, AgentTarget agent) {
+    final TextEditingController nameController = TextEditingController(text: agent.displayName);
+    final TextEditingController dirController = TextEditingController(text: agent.skillsDirectory);
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('编辑自定义 Agent'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Agent 名称'),
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: dirController,
+                decoration: const InputDecoration(labelText: 'Skill 目录'),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final String name = nameController.text.trim();
+                final String dir = dirController.text.trim();
+                if (name.isNotEmpty && dir.isNotEmpty) {
+                  final List<AgentTarget> updated = <AgentTarget>[...agents];
+                  updated[index] = agent.copyWith(
+                    displayName: name,
+                    skillsDirectory: dir,
+                  );
+                  onAgentsChanged(updated);
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+              child: const Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteCustomAgent(BuildContext context, int index, AgentTarget agent) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('删除自定义 Agent'),
+          content: Text('确定要删除「${agent.displayName}」吗？'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () {
+                final List<AgentTarget> updated = <AgentTarget>[...agents];
+                updated.removeAt(index);
+                // 如果删除的是默认 Agent，这里会导致没有默认 Agent。
+                // 简单处理：如果是默认，且列表还有其他开启的数据，可以在后面处理，
+                // 但 `onAgentsChanged` 处理更佳，这里直接交由上层。
+                onAgentsChanged(updated);
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -61,6 +221,8 @@ class _AgentCard extends StatelessWidget {
     required this.agent,
     required this.onToggleEnabled,
     required this.onSetDefault,
+    this.onEdit,
+    this.onDelete,
   });
 
   final AgentTarget agent;
@@ -70,6 +232,9 @@ class _AgentCard extends StatelessWidget {
 
   /// 设为默认的回调；为 null 表示当前已是默认（不可操作）
   final VoidCallback? onSetDefault;
+
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -148,6 +313,25 @@ class _AgentCard extends StatelessWidget {
                   ],
                 ),
               ),
+              // 编辑/删除按钮（仅限自定义Agent）
+              if (agent.id.startsWith('custom_')) ...[
+                Tooltip(
+                  message: '编辑 Agent',
+                  child: IconButton(
+                    onPressed: onEdit,
+                    iconSize: 20,
+                    icon: Icon(Icons.edit_outlined, color: color.onSurfaceVariant),
+                  ),
+                ),
+                Tooltip(
+                  message: '删除 Agent',
+                  child: IconButton(
+                    onPressed: onDelete,
+                    iconSize: 20,
+                    icon: Icon(Icons.delete_outline, color: color.error),
+                  ),
+                ),
+              ],
               // 设为默认按钮
               Tooltip(
                 message: isDefault ? '当前默认 Agent' : '设为默认 Agent',
@@ -166,7 +350,7 @@ class _AgentCard extends StatelessWidget {
                 child: Switch(
                   value: agent.enabled,
                   onChanged: onToggleEnabled,
-                  activeColor: color.onPrimary,
+                  activeThumbColor: color.onPrimary,
                   activeTrackColor: color.primary,
                 ),
               ),
@@ -182,7 +366,7 @@ class _AgentCard extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('${agent.displayName}'),
+          title: Text(agent.displayName),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../models/agent_target.dart';
 import '../models/skill.dart';
 
 /// Skill 操作权限异常：当读取某个 Agent 目录时遭遇系统权限拒绝时抛出。
@@ -33,8 +34,8 @@ class SkillPermissionException implements Exception {
 /// - 安装操作将 Skill 文件夹写入 Agent 的首选发现根目录，刷新后即可发现。
 class SkillService {
   /// 获取指定 Agent 的全部已安装 Skill（实时扫描文件系统，无缓存）。
-  Future<List<Skill>> getInstalledSkillsForAgent(String agentId) async {
-    return _discoverSkillsForAgent(agentId);
+  Future<List<Skill>> getInstalledSkillsForAgent(AgentTarget agent) async {
+    return _discoverSkillsForAgent(agent);
   }
 
   /// 通过文件选择器上传并安装 Skill（仅支持 .zip）。
@@ -42,7 +43,7 @@ class SkillService {
   /// 安装目标为该 Agent 的首选发现根目录（[_primaryDiscoveryRoot]），
   /// 安装完成后刷新即可从文件系统自动发现。
   Future<Skill?> installFromUpload({
-    required String agentId,
+    required AgentTarget agent,
   }) async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.any,
@@ -63,14 +64,14 @@ class SkillService {
       throw Exception('仅支持 .zip 文件');
     }
 
-    return _installFromZip(File(inputPath), agentId: agentId);
+    return _installFromZip(File(inputPath), agent: agent);
   }
 
   /// 从商店 URL 下载 zip 并安装 Skill 到 Agent 的首选发现根目录。
   Future<Skill> installFromStore({
     required String zipUrl,
     required Skill metadata,
-    required String agentId,
+    required AgentTarget agent,
   }) async {
     final http.Response response = await http.get(Uri.parse(zipUrl));
     if (response.statusCode != 200) {
@@ -83,7 +84,7 @@ class SkillService {
 
     return _installFromZip(
       zipFile,
-      agentId: agentId,
+      agent: agent,
       preferredName: metadata.id,
     );
   }
@@ -112,11 +113,11 @@ class SkillService {
   ///
   /// 返回实际成功复制（新增 + 覆盖）的 Skill 数量。
   Future<int> syncSkillsFromDefaultAgent({
-    required String defaultAgentId,
-    required String targetAgentId,
+    required AgentTarget defaultAgent,
+    required AgentTarget targetAgent,
   }) async {
     // 不允许将默认 Agent 的 skill 同步给自身
-    if (defaultAgentId == targetAgentId) {
+    if (defaultAgent.id == targetAgent.id) {
       return 0;
     }
 
@@ -131,7 +132,7 @@ class SkillService {
 
     for (final String home in homes) {
       final List<String> roots =
-          _discoveryRoots(home)[defaultAgentId] ?? const <String>[];
+          _getRootsForAgent(defaultAgent, home);
       for (final String root in roots) {
         final Directory rootDir = Directory(root);
         if (!await rootDir.exists()) {
@@ -165,7 +166,7 @@ class SkillService {
 
     // 确定目标 Agent 的首选存放目录（取第一个 home 的第一个 root）
     final String targetRoot =
-        _primaryDiscoveryRoot(targetAgentId, homes.first);
+        _primaryDiscoveryRoot(targetAgent, homes.first);
     final Directory targetRootDir = Directory(targetRoot);
     if (!await targetRootDir.exists()) {
       throw Exception('目标 Skill 目录不存在：$targetRoot\n请先确认该 Agent 是否已正确安装。');
@@ -197,7 +198,7 @@ class SkillService {
   /// - 若 zip 内为平铺结构（`SKILL.md` 直接在根），则使用 [preferredName] 或 zip 文件名。
   Future<Skill> _installFromZip(
     File zipFile, {
-    required String agentId,
+    required AgentTarget agent,
     String? preferredName,
   }) async {
     final List<int> bytes = await zipFile.readAsBytes();
@@ -208,7 +209,7 @@ class SkillService {
     if (homes.isEmpty) {
       throw Exception('无法获取 HOME 目录');
     }
-    final String targetRoot = _primaryDiscoveryRoot(agentId, homes.first);
+    final String targetRoot = _primaryDiscoveryRoot(agent, homes.first);
     final Directory targetRootDir = Directory(targetRoot);
     if (!await targetRootDir.exists()) {
       throw Exception('目标 Skill 目录不存在：$targetRoot\n请先确认该 Agent 是否已正确安装。');
@@ -260,8 +261,8 @@ class SkillService {
     }
 
     return Skill(
-      id: _genId('${agentId}_$folderName'),
-      agentId: agentId,
+      id: _genId('${agent.id}_$folderName'),
+      agentId: agent.id,
       name: folderName,
       version: 'local',
       description: '已安装',
@@ -292,11 +293,11 @@ class SkillService {
 
   /// 返回指定 Agent 在 [home] 下的**首选**存放目录（即 _discoveryRoots 的第一个路径）。
   /// 用于确定同步/安装时文件的写入位置。
-  String _primaryDiscoveryRoot(String agentId, String home) {
-    final List<String>? roots = _discoveryRoots(home)[agentId];
-    if (roots == null || roots.isEmpty) {
+  String _primaryDiscoveryRoot(AgentTarget agent, String home) {
+    final List<String> roots = _getRootsForAgent(agent, home);
+    if (roots.isEmpty) {
       // 兜底：使用 ~/.skill_lake/<agentId>/skills
-      return '$home/.skill_lake/$agentId/skills';
+      return '$home/.skill_lake/${agent.id}/skills';
     }
     return roots.first;
   }
@@ -308,7 +309,7 @@ class SkillService {
   /// 2. 对每个 root 下的**直接子目录**进行检测。
   /// 3. 子目录内含有 `SKILL.md`（文件名大小写不敏感）时，才视为有效 Skill。
   /// 4. installedPath 使用目录的真实绝对路径，确保与磁盘路径一致。
-  Future<List<Skill>> _discoverSkillsForAgent(String agentId) async {
+  Future<List<Skill>> _discoverSkillsForAgent(AgentTarget agent) async {
     final List<String> homeCandidates = _homeCandidates();
     if (homeCandidates.isEmpty) {
       return <Skill>[];
@@ -317,7 +318,7 @@ class SkillService {
     // 收集该 agent 所有需要扫描的根目录（去重）
     final Set<String> roots = <String>{};
     for (final String home in homeCandidates) {
-      roots.addAll(_discoveryRoots(home)[agentId] ?? const <String>[]);
+      roots.addAll(_getRootsForAgent(agent, home));
     }
 
     final List<Skill> discovered = <Skill>[];
@@ -374,8 +375,8 @@ class SkillService {
 
         discovered.add(
           Skill(
-            id: _genId('${agentId}_$realPath'),
-            agentId: agentId,
+            id: _genId('${agent.id}_$realPath'),
+            agentId: agent.id,
             name: basename,
             version: 'local',
             description: description,
@@ -389,7 +390,7 @@ class SkillService {
 
     if (discovered.isEmpty && permissionDeniedPaths.isNotEmpty) {
       throw SkillPermissionException(
-        agentId: agentId,
+        agentId: agent.id,
         deniedPaths: permissionDeniedPaths.toList()..sort(),
       );
     }
@@ -429,16 +430,14 @@ class SkillService {
   }
 
   /// 返回各 Agent 的 skills 目录发现路径列表。
-  /// 首选路径为各工具的官方约定目录，其余为兜底备用路径。
-  /// - Cursor       : ~/.cursor/skills/
-  /// - Claude Code  : ~/.claude/skills/
-  /// - Codex CLI    : ~/.codex/skills/
-  /// - Trae         : ~/.trae/skills/
-  /// - Gemini CLI   : ~/.gemini/skills/
-  /// - Antigravity  : ~/.gemini/antigravity/skills/
-  /// - GitHub Copilot : ~/.copilot/skills/
-  Map<String, List<String>> _discoveryRoots(String home) {
-    return <String, List<String>>{
+  List<String> _getRootsForAgent(AgentTarget agent, String home) {
+    if (agent.skillsDirectory != null && agent.skillsDirectory!.isNotEmpty) {
+      // 支持用 ~ 代替 home
+      final String dir = agent.skillsDirectory!.replaceAll('~', home);
+      return <String>[dir];
+    }
+    
+    final Map<String, List<String>> builtin = <String, List<String>>{
       // Cursor 官方 skills 目录
       'cursor': <String>[
         '$home/.cursor/skills',
@@ -463,7 +462,7 @@ class SkillService {
       'gemini_cli': <String>[
         '$home/.gemini/skills',
       ],
-      // Antigravity 官方 skills 目录（位于 ~/.gemini/antigravity/skills/）
+      // Antigravity 官方 skills 目录
       'antigravity': <String>[
         '$home/.gemini/antigravity/skills',
         '$home/Library/Application Support/Antigravity/skills',
@@ -473,6 +472,7 @@ class SkillService {
         '$home/.copilot/skills',
       ],
     };
+    return builtin[agent.id] ?? const <String>[];
   }
 
   /// 安全列出 [dir] 下所有直接子目录（含符号链接指向的目录）。

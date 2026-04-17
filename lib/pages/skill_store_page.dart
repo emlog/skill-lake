@@ -144,6 +144,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
           onRefresh: () => _loadStoreSkills(forceRefresh: true),
           isRefreshing: _refreshing,
           isLoading: _loading,
+          showRefresh: _currentSource is! SkillsmpSkillSource,
         ),
         const SizedBox(height: 12),
 
@@ -309,6 +310,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
     }
 
     return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: _items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (BuildContext context, int index) {
@@ -331,7 +333,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
       _installingIds.add(item.skill.id);
     });
     try {
-      await _installSkillFromGitHub(item, agentId: target.id);
+      await _installSkillFromGitHub(item, agent: target);
       if (!mounted) {
         return;
       }
@@ -365,7 +367,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
   /// 从 GitHub 下载指定 skill 目录并安装到 Agent 的 skills 根目录
   Future<void> _installSkillFromGitHub(
     StoreSkillItem item, {
-    required String agentId,
+    required AgentTarget agent,
   }) async {
     // 下载仓库 zip
     final http.Response response = await http.get(
@@ -394,7 +396,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
     }
 
     // 确定安装目标路径
-    final String targetRoot = await _getInstallRoot(agentId);
+    final String targetRoot = await _getInstallRoot(agent);
     final Directory outputDir =
         Directory('$targetRoot/${item.skillDirName}');
 
@@ -429,23 +431,30 @@ class _SkillStorePageState extends State<SkillStorePage> {
   }
 
   /// 获取 Agent 的首选 skills 安装目录
-  Future<String> _getInstallRoot(String agentId) async {
+  Future<String> _getInstallRoot(AgentTarget agent) async {
     final String? home = Platform.environment['HOME'];
     if (home == null || home.isEmpty) {
       throw Exception('无法获取 HOME 目录');
     }
 
-    // 使用与 SkillService 一致的目录映射
+    // 优先使用 Agent 自定义的目录设置
+    if (agent.skillsDirectory != null && agent.skillsDirectory!.isNotEmpty) {
+      return agent.skillsDirectory!.replaceAll('~', home);
+    }
+
+    // 默认内置 Agent 的目录映射（与 SkillService 一致）
     final Map<String, String> primaryRoots = <String, String>{
       'cursor': '$home/.cursor/skills',
       'claude_code': '$home/.claude/skills',
       'codex': '$home/.codex/skills',
       'trae': '$home/.trae/skills',
+      'gemini_cli': '$home/.gemini/skills',
       'antigravity': '$home/.gemini/antigravity/skills',
+      'github_copilot': '$home/.copilot/skills',
     };
 
     final String root =
-        primaryRoots[agentId] ?? '$home/.skill_lake/$agentId/skills';
+        primaryRoots[agent.id] ?? '$home/.skill_lake/${agent.id}/skills';
 
     final Directory dir = Directory(root);
     if (!await dir.exists()) {
@@ -472,6 +481,7 @@ class _SourceSwitcher extends StatelessWidget {
     required this.onRefresh,
     required this.isRefreshing,
     required this.isLoading,
+    this.showRefresh = true,
   });
 
   final List<SkillSource> sources;
@@ -480,6 +490,7 @@ class _SourceSwitcher extends StatelessWidget {
   final VoidCallback onRefresh;
   final bool isRefreshing;
   final bool isLoading;
+  final bool showRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -530,18 +541,19 @@ class _SourceSwitcher extends StatelessWidget {
           }),
           const Spacer(),
           // 刷新按钮
-          IconButton(
-            onPressed: isLoading ? null : onRefresh,
-            tooltip: '刷新缓存',
-            iconSize: 18,
-            icon: isRefreshing
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh),
-          ),
+          if (showRefresh)
+            IconButton(
+              onPressed: isLoading ? null : onRefresh,
+              tooltip: '刷新缓存',
+              iconSize: 18,
+              icon: isRefreshing
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
+            ),
         ],
       ),
     );

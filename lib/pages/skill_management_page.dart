@@ -59,7 +59,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     }
     try {
       final List<Skill> all =
-          await _skillService.getInstalledSkillsForAgent(widget.selectedAgent.id);
+          await _skillService.getInstalledSkillsForAgent(widget.selectedAgent);
       if (!mounted) {
         return;
       }
@@ -158,6 +158,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
               : _skills.isEmpty
                   ? const Center(child: Text('暂无已安装 Skill'))
                   : ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: _skills.length + 1,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (BuildContext context, int index) {
@@ -280,8 +281,8 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     }
     try {
       final int count = await _skillService.syncSkillsFromDefaultAgent(
-        defaultAgentId: defaultAgent.id,
-        targetAgentId: widget.selectedAgent.id,
+        defaultAgent: defaultAgent,
+        targetAgent: widget.selectedAgent,
       );
       await _loadSkills();
       if (!mounted) {
@@ -309,7 +310,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
   Future<void> _onUploadInstall() async {
     try {
       final Skill? skill = await _skillService.installFromUpload(
-        agentId: widget.selectedAgent.id,
+        agent: widget.selectedAgent,
       );
       if (!mounted) {
         return;
@@ -378,27 +379,6 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) => _SkillDetailDialog(skill: skill),
-    );
-  }
-}
-
-class _TagPill extends StatelessWidget {
-  const _TagPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium,
-      ),
     );
   }
 }
