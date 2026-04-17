@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/agent_target.dart';
 import '../services/settings_service.dart';
 import '../services/store_service.dart';
+import '../utils/snackbar_util.dart';
 
 /// Skill 商店页面，浏览并在线安装开源 Skill。
 ///
@@ -338,20 +339,19 @@ class _SkillStorePageState extends State<SkillStorePage> {
       final String targetDesc = isDefaultTarget
           ? '默认 Agent: ${target.displayName}'
           : target.displayName;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '安装成功：${item.skill.name} (已安装到 $targetDesc)',
-          ),
-        ),
+      SnackbarUtil.show(
+        context,
+        '安装成功：${item.skill.name} (已安装到 $targetDesc)',
       );
     } catch (err) {
       if (!mounted) {
         return;
       }
       final String errMsg = err.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('安装失败：$errMsg')),
+      SnackbarUtil.show(
+        context,
+        '安装失败：$errMsg',
+        isSuccess: false,
       );
     } finally {
       if (mounted) {
@@ -866,8 +866,9 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
         setState(() {
           _apiKey = newKey;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已保存 API Key 配置')),
+        SnackbarUtil.show(
+          context,
+          '已保存 API Key 配置',
         );
       }
     }

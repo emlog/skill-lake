@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/agent_target.dart';
 import '../models/skill.dart';
 import '../services/skill_service.dart';
+import '../utils/snackbar_util.dart';
 
 /// Skill 管理页面，展示指定 Agent 的已安装 Skill 列表。
 ///
@@ -76,14 +77,11 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       });
       final String deniedHint =
           err.deniedPaths.isEmpty ? '' : '\n受限路径：${err.deniedPaths.first}';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '无法读取 ${widget.selectedAgent.displayName} 的 Skill 列表：权限不足。'
-            '请在系统设置中为应用授权“文件与文件夹”或“完全磁盘访问”，然后点击刷新。$deniedHint',
-          ),
-          duration: const Duration(seconds: 6),
-        ),
+      SnackbarUtil.show(
+        context,
+        '无法读取 ${widget.selectedAgent.displayName} 的 Skill 列表：权限不足。请在系统设置中为应用授权“文件与文件夹”或“完全磁盘访问”，然后点击刷新。$deniedHint',
+        isSuccess: false,
+        duration: const Duration(seconds: 6),
       );
     } catch (_) {
       if (!mounted) {
@@ -93,10 +91,10 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
         _skills = <Skill>[];
         _loading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('读取 ${widget.selectedAgent.displayName} Skill 列表失败，请稍后重试。'),
-        ),
+      SnackbarUtil.show(
+        context,
+        '读取 ${widget.selectedAgent.displayName} Skill 列表失败，请稍后重试。',
+        isSuccess: false,
       );
     }
   }
@@ -289,22 +287,21 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            count > 0
-                ? '已从 ${defaultAgent.displayName} 同步 $count 个 Skill'
-                : '无需同步，所有 Skill 已是最新',
-          ),
-        ),
+      SnackbarUtil.show(
+        context,
+        count > 0
+            ? '已从 ${defaultAgent.displayName} 同步 $count 个 Skill'
+            : '无需同步，所有 Skill 已是最新',
       );
     } catch (err) {
       if (!mounted) {
         return;
       }
       final String errMsg = err.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('同步失败：$errMsg')),
+      SnackbarUtil.show(
+        context,
+        '同步失败：$errMsg',
+        isSuccess: false,
       );
     }
   }
@@ -318,26 +315,20 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
         return;
       }
       if (skill == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已取消选择文件')),
-        );
+        SnackbarUtil.show(context, '已取消选择文件', isSuccess: true);
         return;
       }
       await _loadSkills();
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('安装成功：${skill.name}')),
-      );
+      SnackbarUtil.show(context, '安装成功：${skill.name}');
     } catch (err) {
       if (!mounted) {
         return;
       }
       final String errMsg = err.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('上传安装失败：$errMsg')),
-      );
+      SnackbarUtil.show(context, '上传安装失败：$errMsg', isSuccess: false);
     }
   }
 
@@ -374,16 +365,12 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已删除：${skill.name}')),
-      );
+      SnackbarUtil.show(context, '已删除：${skill.name}');
     } catch (err) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除失败：$err')),
-      );
+      SnackbarUtil.show(context, '删除失败：$err', isSuccess: false);
     }
   }
 
