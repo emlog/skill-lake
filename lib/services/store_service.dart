@@ -121,9 +121,9 @@ class StoreService {
 
   /// 内置的 Skill 仓库源列表
   static const List<SkillSource> builtInSources = <SkillSource>[
+    SkillsmpSkillSource(),
     GitHubSkillSource(owner: 'anthropics', repo: 'skills'),
     GitHubSkillSource(owner: 'obra', repo: 'superpowers'),
-    SkillsmpSkillSource(),
   ];
 
   /// 获取缓存文件路径（按 owner/repo 区分）
