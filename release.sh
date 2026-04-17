@@ -39,26 +39,32 @@ hdiutil create -volname "Skill Lake" -srcfolder "$DMG_STAGING_DIR" -ov -format U
 # Clean up staging directory
 rm -rf "$DMG_STAGING_DIR"
 
-# echo "Updating Homebrew Cask..."
-# mkdir -p Casks
-# SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')
-# cat <<EOF > Casks/skill-lake.rb
-# cask "skill-lake" do
-#   version "${VERSION}"
-#   sha256 "${SHA}"
+echo "Updating Homebrew Cask (local)..."
+mkdir -p Casks
+SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')
+cat <<EOF > Casks/skill-lake.rb
+cask "skill-lake" do
+  version "${VERSION}"
+  sha256 "${SHA}"
 
-#   url "https://github.com/emlog/skill-lake/releases/download/${VERSION}/${DMG_NAME}"
-#   name "Skill Lake"
-#   desc "A local AI agent skill manager app for macOS"
-#   homepage "https://github.com/emlog/skill-lake"
+  url "https://github.com/emlog/skill-lake/releases/download/${VERSION}/${DMG_NAME}"
+  name "Skill Lake"
+  desc "A local AI agent skill manager app for macOS"
+  homepage "https://github.com/emlog/skill-lake"
 
-#   app "Skill Lake.app"
-# end
-# EOF
+  app "Skill Lake.app"
+
+  zap trash: [
+    "~/Library/Application Support/com.emlog.skillLake",
+    "~/Library/Preferences/com.emlog.skillLake.plist",
+    "~/Library/Saved Application State/com.emlog.skillLake.savedState",
+  ]
+end
+EOF
 
 echo "Committing and Tagging in Git..."
 git add -u
-# git add Casks/skill-lake.rb
+git add Casks/skill-lake.rb
 git diff --cached --quiet || git commit -m "chore: release ${VERSION}"
 git tag -f "${VERSION}"
 git push origin main
@@ -102,6 +108,12 @@ cask "skill-lake" do
   homepage "https://github.com/emlog/skill-lake"
 
   app "Skill Lake.app"
+
+  zap trash: [
+    "~/Library/Application Support/com.emlog.skillLake",
+    "~/Library/Preferences/com.emlog.skillLake.plist",
+    "~/Library/Saved Application State/com.emlog.skillLake.savedState",
+  ]
 end
 EOF
 
