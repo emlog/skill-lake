@@ -349,8 +349,9 @@ class _SkillStorePageState extends State<SkillStorePage> {
       if (!mounted) {
         return;
       }
+      final String errMsg = err.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('安装失败：$err')),
+        SnackBar(content: Text('安装失败：$errMsg')),
       );
     } finally {
       if (mounted) {
@@ -448,7 +449,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
 
     final Directory dir = Directory(root);
     if (!await dir.exists()) {
-      await dir.create(recursive: true);
+      throw Exception('目标 Skill 目录不存在：$root\n请先确认该 Agent 是否已正确安装。');
     }
     return root;
   }

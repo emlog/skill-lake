@@ -168,7 +168,7 @@ class SkillService {
         _primaryDiscoveryRoot(targetAgentId, homes.first);
     final Directory targetRootDir = Directory(targetRoot);
     if (!await targetRootDir.exists()) {
-      await targetRootDir.create(recursive: true);
+      throw Exception('目标 Skill 目录不存在：$targetRoot\n请先确认该 Agent 是否已正确安装。');
     }
 
     int syncedCount = 0;
@@ -211,7 +211,7 @@ class SkillService {
     final String targetRoot = _primaryDiscoveryRoot(agentId, homes.first);
     final Directory targetRootDir = Directory(targetRoot);
     if (!await targetRootDir.exists()) {
-      await targetRootDir.create(recursive: true);
+      throw Exception('目标 Skill 目录不存在：$targetRoot\n请先确认该 Agent 是否已正确安装。');
     }
 
     // 检测 zip 内是否存在唯一顶层目录

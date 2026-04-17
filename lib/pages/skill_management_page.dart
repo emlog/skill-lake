@@ -302,8 +302,9 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       if (!mounted) {
         return;
       }
+      final String errMsg = err.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('同步失败：$err')),
+        SnackBar(content: Text('同步失败：$errMsg')),
       );
     }
   }
@@ -333,8 +334,9 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       if (!mounted) {
         return;
       }
+      final String errMsg = err.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('上传安装失败：$err')),
+        SnackBar(content: Text('上传安装失败：$errMsg')),
       );
     }
   }
