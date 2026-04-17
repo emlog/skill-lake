@@ -132,8 +132,6 @@ class _SkillStorePageState extends State<SkillStorePage> {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme color = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -148,121 +146,180 @@ class _SkillStorePageState extends State<SkillStorePage> {
         ),
         const SizedBox(height: 12),
 
-        // 如果是 Skillsmp 源，显示搜索框
-        if (_currentSource is SkillsmpSkillSource) ...<Widget>[
-          _SkillsmpSearchHeader(
-            settingsService: _settingsService,
-            onSearch: (String query, String apiKey) async {
-              if (query.isEmpty) return;
-              setState(() {
-                _loading = true;
-                _hasSearched = true;
-                _errorMessage = null;
-              });
-              try {
-                final List<StoreSkillItem> items =
-                    await _storeService.searchSkillsmp(query, apiKey);
-                if (!mounted) {
-                  return;
-                }
-                setState(() {
-                  _items = items;
-                  _loading = false;
-                });
-              } catch (e) {
-                if (!mounted) {
-                  return;
-                }
-                setState(() {
-                  _loading = false;
-                  _errorMessage = e.toString();
-                });
-              }
-            },
-          ),
-          const SizedBox(height: 12),
-        ],
-
-        // Skill 列表
         Expanded(
-          child: _loading
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 12),
-                      Text(
-                        '正在从 ${_currentSource.displayName} 加载 Skill 列表…',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                )
-              : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Icon(
-                            Icons.cloud_off_outlined,
-                            size: 48,
-                            color: color.error.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(height: 12),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              '网络请求失败：$_errorMessage',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: color.error),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          if (_currentSource is! SkillsmpSkillSource)
-                            FilledButton.tonalIcon(
-                              onPressed: () => _loadStoreSkills(forceRefresh: true),
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('重试'),
-                            ),
-                        ],
-                      ),
-                    )
-                  : (!_hasSearched)
-                      ? const SizedBox.shrink()
-                      : _items.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.inbox_outlined,
-                                    size: 48,
-                                    color: color.onSurfaceVariant.withValues(alpha: 0.4),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text('没有找到符合条件的 Skill'),
-                                ],
-                              ),
-                            )
-                          : ListView.separated(
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: 8),
-                      itemBuilder: (BuildContext context, int index) {
-                        final StoreSkillItem item = _items[index];
-                        final bool isInstalling =
-                            _installingIds.contains(item.skill.id);
-                        return _StoreSkillCard(
-                          item: item,
-                          isInstalling: isInstalling,
-                          onInstall: () => _onInstall(item),
-                          onViewDetail: () => _onViewDetail(item),
-                        );
-                      },
-                    ),
+          child: _currentSource is SkillsmpSkillSource
+              ? _buildSkillsmpLayout()
+              : _buildListOrStates(),
         ),
       ],
+    );
+  }
+
+  Widget _buildSkillsmpLayout() {
+    // 当没搜索过或结果为空，并且不在加载和报错状态时为“空列表状态”，居中显示搜索组件
+    final bool isEmptyState = (!_hasSearched || _items.isEmpty) && !_loading && _errorMessage == null;
+
+    final Widget searchHeader = _SkillsmpSearchHeader(
+      settingsService: _settingsService,
+      onSearch: (String query, String apiKey) async {
+        if (query.isEmpty) return;
+        setState(() {
+          _loading = true;
+          _hasSearched = true;
+          _errorMessage = null;
+        });
+        try {
+          final List<StoreSkillItem> items =
+              await _storeService.searchSkillsmp(query, apiKey);
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _items = items;
+            _loading = false;
+          });
+        } catch (e) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _loading = false;
+            _errorMessage = e.toString();
+          });
+        }
+      },
+    );
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: isEmptyState
+          ? Container(
+              key: const ValueKey('empty_state'),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 48),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(
+                    Icons.travel_explore, 
+                    size: 64, 
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(height: 24),
+                  searchHeader,
+                  if (_hasSearched) ...<Widget>[
+                    const SizedBox(height: 24),
+                    Text(
+                      '没有找到符合条件的 Skill',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 100), // 微调视觉重心
+                ],
+              ),
+            )
+          : Column(
+              key: const ValueKey('list_state'),
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: searchHeader,
+                ),
+                const SizedBox(height: 12),
+                Expanded(child: _buildListOrStates()),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildListOrStates() {
+    final ColorScheme color = Theme.of(context).colorScheme;
+
+    if (_loading) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const CircularProgressIndicator(),
+            const SizedBox(height: 12),
+            Text(
+              '正在加载…',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 48,
+              color: color.error.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                '网络请求失败：$_errorMessage',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: color.error),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (_currentSource is! SkillsmpSkillSource)
+              FilledButton.tonalIcon(
+                onPressed: () => _loadStoreSkills(forceRefresh: true),
+                icon: const Icon(Icons.refresh),
+                label: const Text('重试'),
+              ),
+          ],
+        ),
+      );
+    }
+
+    if (_currentSource is! SkillsmpSkillSource && _items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.inbox_outlined,
+              size: 48,
+              color: color.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 12),
+            const Text('没有找到符合条件的 Skill'),
+          ],
+        ),
+      );
+    }
+
+    if (_items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ListView.separated(
+      itemCount: _items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (BuildContext context, int index) {
+        final StoreSkillItem item = _items[index];
+        final bool isInstalling = _installingIds.contains(item.skill.id);
+        return _StoreSkillCard(
+          item: item,
+          isInstalling: isInstalling,
+          onInstall: () => _onInstall(item),
+          onViewDetail: () => _onViewDetail(item),
+        );
+      },
     );
   }
 
