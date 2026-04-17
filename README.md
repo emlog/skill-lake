@@ -34,10 +34,15 @@ Skill Lake 会自动扫描并管理以下主流助手在本地的扩展目录：
 ### 运行环境
 - macOS 系统
 
-### Brew 安装 (推荐)
+### Brew 安装与更新 (推荐)
 ```bash
+# 安装
 brew tap emlog/skill-lake
 brew install --cask skill-lake
+
+# 更新
+brew update
+brew upgrade --cask skill-lake
 ```
 
 ### 源码编译运行
