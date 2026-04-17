@@ -106,42 +106,51 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: _InlineAgentFilterBar(
-                agents: widget.agents,
-                selectedIndex: widget.selectedAgentIndex,
-                onChanged: widget.onAgentChanged,
-                defaultAgent: widget.defaultAgent,
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+          ),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: _InlineAgentFilterBar(
+                  agents: widget.agents,
+                  selectedIndex: widget.selectedAgentIndex,
+                  onChanged: widget.onAgentChanged,
+                  defaultAgent: widget.defaultAgent,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            // 仅在当前 Agent 不是默认 Agent 且存在默认 Agent 时，显示同步按钮
-            if (widget.defaultAgent != null &&
-                widget.defaultAgent!.id != widget.selectedAgent.id) ...<Widget>[
+              const SizedBox(width: 8),
+              // 仅在当前 Agent 不是默认 Agent 且存在默认 Agent 时，显示同步按钮
+              if (widget.defaultAgent != null &&
+                  widget.defaultAgent!.id != widget.selectedAgent.id) ...<Widget>[
+                IconButton(
+                  tooltip: '从默认 Agent（${widget.defaultAgent!.displayName}）同步 Skill',
+                  iconSize: 18,
+                  onPressed: _onSyncFromDefault,
+                  icon: const Icon(Icons.sync_alt_outlined),
+                ),
+                const SizedBox(width: 4),
+              ],
               IconButton(
-                tooltip: '从默认 Agent（${widget.defaultAgent!.displayName}）同步 Skill',
+                tooltip: '上传安装',
                 iconSize: 18,
-                onPressed: _onSyncFromDefault,
-                icon: const Icon(Icons.sync_alt_outlined),
+                onPressed: _onUploadInstall,
+                icon: const Icon(Icons.upload),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: '刷新',
+                iconSize: 18,
+                onPressed: _loadSkills,
+                icon: const Icon(Icons.refresh),
               ),
               const SizedBox(width: 4),
             ],
-            IconButton(
-              tooltip: '上传安装',
-              iconSize: 18,
-              onPressed: _onUploadInstall,
-              icon: const Icon(Icons.upload),
-            ),
-            const SizedBox(width: 4),
-            IconButton(
-              tooltip: '刷新',
-              iconSize: 18,
-              onPressed: _loadSkills,
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
+          ),
         ),
         const SizedBox(height: 12),
         const SizedBox(height: 12),
@@ -421,13 +430,9 @@ class _InlineAgentFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (agents.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-        ),
-        child: const Row(
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
           children: <Widget>[
             Icon(Icons.info_outline, size: 18),
             SizedBox(width: 8),
@@ -437,25 +442,30 @@ class _InlineAgentFilterBar extends StatelessWidget {
       );
     }
 
-    return Container(
+    final List<AgentTarget> displayAgents = List<AgentTarget>.from(agents);
+    if (defaultAgent != null) {
+      displayAgents.sort((a, b) {
+        if (a.id == defaultAgent!.id) return -1;
+        if (b.id == defaultAgent!.id) return 1;
+        return 0;
+      });
+    }
+
+    return SizedBox(
       height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-      ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: agents.length,
-        itemBuilder: (BuildContext context, int index) {
-          final AgentTarget agent = agents[index];
+        itemCount: displayAgents.length,
+        itemBuilder: (BuildContext context, int displayIndex) {
+          final AgentTarget agent = displayAgents[displayIndex];
+          final int originalIndex = agents.indexOf(agent);
           final bool isDefault = defaultAgent != null && defaultAgent!.id == agent.id;
-          final bool selected = index == selectedIndex;
+          final bool selected = originalIndex == selectedIndex;
           return Padding(
             padding: const EdgeInsets.only(right: 4),
             child: ChoiceChip(
               selected: selected,
-              onSelected: (_) => onChanged(index),
+              onSelected: (_) => onChanged(originalIndex),
               showCheckmark: false,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               side: BorderSide.none,

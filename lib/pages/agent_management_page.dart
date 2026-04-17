@@ -81,14 +81,10 @@ class _AgentCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDefault
-              ? color.primary.withValues(alpha: 0.8)
-              : color.outlineVariant.withValues(alpha: isDark ? 0.2 : 0.4),
-          width: isDefault ? 1.0 : 0.5,
+          color: color.outlineVariant.withValues(alpha: isDark ? 0.2 : 0.4),
+          width: 0.5,
         ),
-        color: isDefault
-            ? (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.02))
-            : color.surface,
+        color: color.surface,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

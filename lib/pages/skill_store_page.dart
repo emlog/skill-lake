@@ -638,17 +638,10 @@ class _StoreSkillDetailDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _DetailRow(label: '名称', value: item.skill.name),
-              _DetailRow(label: '来源', value: item.source.displayName),
-              _DetailRow(label: '目录', value: item.skillDirName),
               _DetailRow(label: '作者', value: item.skill.author),
               _DetailRow(
                 label: '描述',
                 value: item.skill.description,
-              ),
-              _DetailRow(
-                label: 'SKILL.md',
-                value: item.skillMdUrl,
               ),
             ],
           ),
@@ -824,39 +817,69 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme color = Theme.of(context).colorScheme;
     return Row(
       children: <Widget>[
         Expanded(
           child: TextField(
             controller: _queryController,
-            decoration: const InputDecoration(
-              labelText: '搜索 Skill',
+            decoration: InputDecoration(
               hintText: '支持语义搜索，例如：最适合前端开发的SKILL',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.search, color: color.primary),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: color.outlineVariant.withValues(alpha: 0.5)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: color.outlineVariant.withValues(alpha: 0.5)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: color.primary),
+              ),
+              filled: true,
+              fillColor: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF2C2C2C)
+                  : const Color(0xFFF9F9F9),
               isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
             onSubmitted: (_) => _onSearch(),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         SizedBox(
-          height: 40,
+          height: 44,
           child: FilledButton.icon(
             onPressed: _onSearch,
             icon: const Icon(Icons.search, size: 18),
             label: const Text('搜索'),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: _openSettingsDialog,
-          tooltip: 'Skillsmp 配置',
-          iconSize: 18,
-          icon: const Icon(Icons.settings),
+        const SizedBox(width: 16),
+        Container(
+          height: 44,
+          width: 44,
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF2C2C2C)
+                : const Color(0xFFF9F9F9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.outlineVariant.withValues(alpha: 0.5)),
+          ),
+          child: IconButton(
+            onPressed: _openSettingsDialog,
+            tooltip: 'Skillsmp 配置',
+            iconSize: 20,
+            icon: Icon(Icons.settings, color: color.onSurfaceVariant),
+          ),
         ),
       ],
     );
