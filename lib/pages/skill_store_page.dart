@@ -541,8 +541,12 @@ class _SourceSwitcher extends StatelessWidget {
           }),
           const Spacer(),
           // 刷新按钮
-          if (showRefresh)
-            IconButton(
+          Visibility(
+            visible: showRefresh,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: IconButton(
               onPressed: isLoading ? null : onRefresh,
               tooltip: '刷新缓存',
               iconSize: 18,
@@ -554,6 +558,7 @@ class _SourceSwitcher extends StatelessWidget {
                     )
                   : const Icon(Icons.refresh),
             ),
+          ),
         ],
       ),
     );

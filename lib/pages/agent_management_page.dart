@@ -28,15 +28,18 @@ class AgentManagementPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: '添加自定义 Agent',
-              onPressed: () => _showAddAgentDialog(context),
-            ),
-          ],
+        Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: <Widget>[
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: '添加自定义 Agent',
+                onPressed: () => _showAddAgentDialog(context),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         Expanded(
