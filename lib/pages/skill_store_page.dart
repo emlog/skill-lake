@@ -940,16 +940,9 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
           ),
         ),
         const SizedBox(width: 16),
-        Container(
+        SizedBox(
           height: 44,
           width: 44,
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF2C2C2C)
-                : const Color(0xFFF9F9F9),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.outlineVariant.withValues(alpha: 0.5)),
-          ),
           child: IconButton(
             onPressed: _openSettingsDialog,
             tooltip: 'Skillsmp 配置',

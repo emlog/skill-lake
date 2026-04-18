@@ -12,9 +12,7 @@
 - **丰富的技能商店**：聚合 GitHub 优质开源技能库（如 `anthropics/skills`），探索最新、最强的 AI 技能并实现一键安装。
 - **SKill 同步**：支持设置默认 AI Agent，并能一键将技能灵活分发与同步至其他Agent。
 
-## 常用 AI Agent
-
-Skill Lake 会自动扫描并管理以下主流助手在本地的扩展目录：
+## 支持的 AI Agent
 
 | AI 工具 | 个人级 Skills 路径 | 官方网站 |
 | :--- | :--- | :--- |
