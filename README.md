@@ -4,7 +4,7 @@
 ![Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B?logo=flutter)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**Skill Lake** 是一款为 AI 开发者打造的 Agent Skill 本地化管理中心。无论您使用哪个 AI 编程助手，Skill Lake 都能帮您统一发现、安装、同步和管理您的专属 AI 技能。
+**Skill Lake** 是一款 macOS 上的 AI Agent Skill 管理工具。支持搜索、安装、删除、同步 Skill。
 
 ## 核心特性
 
@@ -12,7 +12,7 @@
 - **丰富的技能商店**：聚合 GitHub 优质开源技能库（如 `anthropics/skills`），探索最新、最强的 AI 技能并实现一键安装。
 - **SKill 同步**：支持设置默认 AI Agent，并能一键将技能灵活分发与同步至其他Agent。
 
-## 支持的 AI Agent
+## 常用 AI Agent
 
 Skill Lake 会自动扫描并管理以下主流助手在本地的扩展目录：
 
@@ -26,43 +26,42 @@ Skill Lake 会自动扫描并管理以下主流助手在本地的扩展目录：
 | **Antigravity** | `~/.gemini/antigravity/skills/` | <https://antigravity.google/> |
 | **GitHub Copilot** | `~/.copilot/skills/` | <https://github.com/features/copilot> |
 
-### 运行环境
-- macOS 系统
-
-### 安装与更新
+## 安装
 
 ```bash
-# 安装
 brew tap emlog/skill-lake
 brew install --cask skill-lake
+```
 
-# 更新
+## 更新
+
+```bash
 brew update
 brew upgrade --cask skill-lake
 ```
 
-### 源码编译运行
+## 源码编译运行
 
-#### **1.克隆项目源码**：
+### **1.克隆项目源码**：
 
 ```bash
 git clone https://github.com/emlog/skill-lake.git
 cd skill-lake
 ```
 
-#### **2.启用 macOS 桌面开发支持**（如果你是首次运行 Flutter 桌面端项目）：
+### **2.启用 macOS 桌面开发支持**（如果你是首次运行 Flutter 桌面端项目）：
 
 ```bash
 flutter config --enable-macos-desktop
 ```
 
-#### **3.获取项目依赖包**：
+### **3.获取项目依赖包**：
 
 ```bash
 flutter pub get
 ```
 
-#### **4.编译并启动应用**：
+### **4.编译并启动应用**：
 
 ```bash
 flutter run -d macos
