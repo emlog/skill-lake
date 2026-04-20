@@ -1,0 +1,69 @@
+{
+  "@@locale": "en",
+  "appTitle": "Skill Lake",
+  "menuSkill": "Skill",
+  "menuAgent": "Agent",
+  "menuStore": "Store",
+  "about": "About",
+  "author": "Author",
+  "homepage": "Homepage",
+  "noEnabledAgentHint": "No enabled agent, please enable at least one in 「Agent Management」.",
+  "addCustomAgent": "Add Custom Agent",
+  "editCustomAgent": "Edit Custom Agent",
+  "deleteCustomAgent": "Delete Custom Agent",
+  "agentName": "Agent Name",
+  "skillsDirectory": "Skills Directory",
+  "cancel": "Cancel",
+  "add": "Add",
+  "save": "Save",
+  "delete": "Delete",
+  "close": "Close",
+  "defaultLabel": "Default",
+  "edit": "Edit",
+  "setDefaultAgent": "Set as Default Agent",
+  "currentDefaultAgent": "Current Default Agent",
+  "syncFromDefault": "Sync from Default",
+  "uploadInstall": "Upload Install",
+  "refresh": "Refresh",
+  "noInstalledSkill": "No installed skills",
+  "totalCount": "Total {count}",
+  "@totalCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmDelete": "Confirm Delete",
+  "confirmDeleteContent": "Are you sure you want to delete {name}?\nThis action cannot be undone.",
+  "@confirmDeleteContent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "view": "View",
+  "description": "Description",
+  "path": "Path",
+  "language": "Language",
+  "loading": "Loading...",
+  "retry": "Retry",
+  "networkError": "Network request failed: {error}",
+  "@networkError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noMatchSkill": "No matching skills found",
+  "installing": "Installing...",
+  "install": "Install",
+  "refreshCache": "Refresh Cache",
+  "search": "Search",
+  "searchHint": "Semantic search, e.g.: SKILL for front-end development",
+  "skillsmpSettings": "Skillsmp Settings",
+  "apiKeyHint": "Setting your own API Key can get more search quota.",
+  "getApiKey": "Get API Key: "
+}

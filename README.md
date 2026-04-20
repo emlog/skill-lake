@@ -1,20 +1,22 @@
 # 🌊 Skill Lake
 
+[简体中文](./README_zh.md) | English
+
 ![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-blue)
 ![Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B?logo=flutter)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**Skill Lake** 是一款跨平台（macOS / Windows）的 AI Agent Skill 管理工具。支持搜索、安装、删除、同步 Skill。
+**Skill Lake** is a cross-platform (macOS / Windows) management tool for AI Agent Skills. It supports searching, installing, deleting, and syncing skills.
 
-## 核心特性
+## Core Features
 
-- **一站式技能管理**：兼容并管理多个主流 AI 编程助手的 Skill 生命周期。
-- **丰富的技能商店**：聚合 GitHub 优质开源技能库（如 `anthropics/skills`），探索最新、最强的 AI 技能并实现一键安装。
-- **SKill 同步**：支持设置默认 AI Agent，并能一键将技能灵活分发与同步至其他Agent。
+- **One-stop Skill Management**: Compatible with and manages the lifecycle of skills for various popular AI programming assistants.
+- **Rich Skill Store**: Aggregates high-quality open-source skill libraries from GitHub (such as `anthropics/skills`), explore the latest and most powerful AI skills and install them with one click.
+- **Skill Sync**: Supports setting a default AI Agent and enables one-click flexible distribution and synchronization of skills to other agents.
 
-## 支持的 AI Agent
+## Supported AI Agents
 
-| AI 工具 | 个人级 Skills 路径 | 官方网站 |
+| AI Tool | Local Skills Path | Official Website |
 | :--- | :--- | :--- |
 | **Cursor** | `~/.cursor/skills/` (Windows: `%USERPROFILE%\\.cursor\\skills` or `%APPDATA%\\Cursor\\skills`) | <https://cursor.com/> |
 | **Claude Code** | `~/.claude/skills/` (Windows: `%USERPROFILE%\\.claude\\skills` or `%APPDATA%\\Claude\\skills`) | <https://claude.com/product/claude-code> |
@@ -24,30 +26,38 @@
 | **Antigravity** | `~/.gemini/antigravity/skills/` (Windows: `%USERPROFILE%\\.gemini\\antigravity\\skills` or `%APPDATA%\\Antigravity\\skills`) | <https://antigravity.google/> |
 | **GitHub Copilot** | `~/.copilot/skills/` (Windows: `%USERPROFILE%\\.copilot\\skills` or `%APPDATA%\\Copilot\\skills`) | <https://github.com/features/copilot> |
 
-## 安装
+## Installation
+
+### macOS (Recommended)
+
+Install via Homebrew:
 
 ```bash
 brew tap emlog/skill-lake
 brew install --cask skill-lake
 ```
 
-## 更新
+### Windows
+
+Please download the latest `.exe` installer from the [Releases](https://github.com/emlog/skill-lake/releases) page.
+
+## Update
 
 ```bash
 brew update
 brew upgrade --cask skill-lake
 ```
 
-## 源码编译运行
+## Build from Source
 
-### **1.克隆项目源码**：
+### **1. Clone the project source code**:
 
 ```bash
 git clone https://github.com/emlog/skill-lake.git
 cd skill-lake
 ```
 
-### **2.启用桌面开发支持**（如果你是首次运行 Flutter 桌面端项目）：
+### **2. Enable desktop development support** (if you are running a Flutter desktop project for the first time):
 
 - macOS:
 
@@ -61,13 +71,13 @@ flutter config --enable-macos-desktop
 flutter config --enable-windows-desktop
 ```
 
-### **3.获取项目依赖包**：
+### **3. Get project dependencies**:
 
 ```bash
 flutter pub get
 ```
 
-### **4.编译并启动应用**：
+### **4. Compile and start the application**:
 
 - macOS:
 
@@ -82,15 +92,15 @@ flutter run -d windows
 ```
 
 
-## ❓ 常见问题 (FAQ)
+## ❓ FAQ
 
-### ⚠️ 运行或安装时提示「“Skill Lake”已损坏，无法打开。您应该将它移到废纸篓。」怎么办？
+### ⚠️ Warning: "Skill Lake is damaged and can't be opened. You should move it to the Trash."
 
-由于应用暂未进行 Apple 开发者证书的签名与公证，macOS 的 Gatekeeper 机制可能会拦截此应用并给出“已损坏”或“移到废纸篓”的警告提示。
+Since the application has not yet been signed and notarized with an Apple Developer certificate, macOS's Gatekeeper mechanism may block this application and give a "damaged" or "move to Trash" warning.
 
-**解决方法：**
-1. 遇到提示时，请先点击弹窗上的 **「取消」**。
-2. 打开 macOS 的 **「系统设置」** > **「隐私与安全性」**。
-3. 向下滚动到“安全性”板块，这里会有一条拦截记录（提示“Skill Lake”已被阻止使用）。
-4. 点击旁边的 **「仍然打开」**（或 **「仍然允许」**）按钮，并在弹出的安全验证中输入您的 Mac 开机密码或通过触控 ID 授权。
-5. 授权完成后，再次尝试打开 **Skill Lake**，此时弹出的确认框中会出现 **「打开」** 按钮，点击后系统将记住您的选择，以后就不会再被拦截了。
+**Solution:**
+1. When the prompt appears, first click **"Cancel"** on the pop-up window.
+2. Open macOS **"System Settings"** > **"Privacy & Security"**.
+3. Scroll down to the "Security" section, where there will be an interception record (indicating "Skill Lake" has been blocked).
+4. Click the **"Open Anyway"** (or **"Allow Anyway"**) button next to it, and enter your Mac login password or authorize via Touch ID in the pop-up security verification.
+5. After authorization is completed, try to open **Skill Lake** again. An **"Open"** button will appear in the confirmation box. After clicking it, the system will remember your choice and you will not be blocked again.

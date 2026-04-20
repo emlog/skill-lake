@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class AppScaffoldShell extends StatelessWidget {
   const AppScaffoldShell({
     super.key,
     required this.selectedMenu,
     required this.onMenuChanged,
+    required this.onLocaleChanged,
     required this.content,
   });
 
   final int selectedMenu;
   final ValueChanged<int> onMenuChanged;
+  final ValueChanged<String> onLocaleChanged;
   final Widget content;
 
   @override
@@ -18,6 +21,7 @@ class AppScaffoldShell extends StatelessWidget {
     final ColorScheme color = Theme.of(context).colorScheme;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color sidebarColor = isDark ? const Color(0xFF202123) : const Color(0xFFF9F9F9);
+    final AppLocalizations l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: Row(
@@ -58,7 +62,7 @@ class AppScaffoldShell extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          'Skill Lake',
+                          l10n.appTitle,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -74,35 +78,51 @@ class AppScaffoldShell extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
-                            _buildMenuItem(context, index: 0, label: 'Skill', icon: Icons.extension_outlined, selectedIcon: Icons.extension),
-                            _buildMenuItem(context, index: 1, label: 'Agent', icon: Icons.smart_toy_outlined, selectedIcon: Icons.smart_toy),
-                            _buildMenuItem(context, index: 2, label: 'Store', icon: Icons.storefront_outlined, selectedIcon: Icons.storefront),
+                            _buildMenuItem(context, index: 0, label: l10n.menuSkill, icon: Icons.extension_outlined, selectedIcon: Icons.extension),
+                            _buildMenuItem(context, index: 1, label: l10n.menuAgent, icon: Icons.smart_toy_outlined, selectedIcon: Icons.smart_toy),
+                            _buildMenuItem(context, index: 2, label: l10n.menuStore, icon: Icons.storefront_outlined, selectedIcon: Icons.storefront),
                           ],
                         ),
                       ),
                     ),
                   ),
-                  // 底部 关于 按钮区
+                  // 底部 按钮区
                   Padding(
                     padding: const EdgeInsets.all(12.0),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () => _showAboutDialog(context, color),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: <Widget>[
-                            Icon(
-                              Icons.info_outline,
-                              size: 18,
-                              color: color.onSurfaceVariant.withValues(alpha: 0.7),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => _showAboutDialog(context, color, l10n),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 18,
+                                    color: color.onSurfaceVariant.withValues(alpha: 0.7),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                        // 语言切换按钮
+                        IconButton(
+                          onPressed: () => _showLanguageMenu(context),
+                          icon: Icon(
+                            Icons.language,
+                            size: 18,
+                            color: color.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
+                          tooltip: l10n.language,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -124,7 +144,50 @@ class AppScaffoldShell extends StatelessWidget {
     );
   }
 
-  void _showAboutDialog(BuildContext context, ColorScheme color) {
+  void _showLanguageMenu(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final Offset offset = button.localToGlobal(Offset.zero);
+    final String currentLocale = Localizations.localeOf(context).languageCode;
+    final ColorScheme color = Theme.of(context).colorScheme;
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx + 200,
+        offset.dy + button.size.height - 100,
+        offset.dx + 260,
+        offset.dy + button.size.height - 40,
+      ),
+      items: <PopupMenuEntry<String>>[
+        PopupMenuItem<String>(
+          value: 'en',
+          child: Row(
+            children: <Widget>[
+              const Expanded(child: Text('English')),
+              if (currentLocale == 'en')
+                Icon(Icons.check, size: 16, color: color.primary),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'zh',
+          child: Row(
+            children: <Widget>[
+              const Expanded(child: Text('简体中文')),
+              if (currentLocale == 'zh')
+                Icon(Icons.check, size: 16, color: color.primary),
+            ],
+          ),
+        ),
+      ],
+    ).then((String? value) {
+      if (value != null && value != currentLocale) {
+        onLocaleChanged(value);
+      }
+    });
+  }
+
+  void _showAboutDialog(BuildContext context, ColorScheme color, AppLocalizations l10n) {
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -155,7 +218,7 @@ class AppScaffoldShell extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'Skill Lake',
+                        l10n.appTitle,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
@@ -164,12 +227,12 @@ class AppScaffoldShell extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color.onSurfaceVariant),
                       ),
                       const SizedBox(height: 24),
-                      const Text('作者：snow'),
+                      Text('${l10n.author}：snow'),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: <Widget>[
-                          const Text('主页：'),
+                          Text('${l10n.homepage}：'),
                           InkWell(
                             onTap: () async {
                               final Uri url = Uri.parse('https://cacai.cc');

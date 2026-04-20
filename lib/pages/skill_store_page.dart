@@ -4,6 +4,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/generated/app_localizations.dart';
 
 import '../models/agent_target.dart';
 import '../services/settings_service.dart';
@@ -11,9 +12,6 @@ import '../services/store_service.dart';
 import '../utils/snackbar_util.dart';
 
 /// Skill 商店页面，浏览并在线安装开源 Skill。
-///
-/// 支持从多个 GitHub 仓库源（如 anthropics/skills、obra/superpowers）
-/// 读取 Skill 列表，支持源切换、本地缓存和一键安装。
 class SkillStorePage extends StatefulWidget {
   const SkillStorePage({
     super.key,
@@ -133,6 +131,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -145,24 +144,26 @@ class _SkillStorePageState extends State<SkillStorePage> {
           isRefreshing: _refreshing,
           isLoading: _loading,
           showRefresh: _currentSource is! SkillsmpSkillSource,
+          l10n: l10n,
         ),
         const SizedBox(height: 12),
 
         Expanded(
           child: _currentSource is SkillsmpSkillSource
-              ? _buildSkillsmpLayout()
-              : _buildListOrStates(),
+              ? _buildSkillsmpLayout(l10n)
+              : _buildListOrStates(l10n),
         ),
       ],
     );
   }
 
-  Widget _buildSkillsmpLayout() {
+  Widget _buildSkillsmpLayout(AppLocalizations l10n) {
     // 当没搜索过或结果为空，并且不在加载和报错状态时为“空列表状态”，居中显示搜索组件
     final bool isEmptyState = (!_hasSearched || _items.isEmpty) && !_loading && _errorMessage == null;
 
     final Widget searchHeader = _SkillsmpSearchHeader(
       settingsService: _settingsService,
+      l10n: l10n,
       onSearch: (String query, String apiKey) async {
         if (query.isEmpty) return;
         setState(() {
@@ -214,7 +215,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
                   if (_hasSearched) ...<Widget>[
                     const SizedBox(height: 24),
                     Text(
-                      '没有找到符合条件的 Skill',
+                      l10n.noMatchSkill,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -232,13 +233,13 @@ class _SkillStorePageState extends State<SkillStorePage> {
                   child: searchHeader,
                 ),
                 const SizedBox(height: 12),
-                Expanded(child: _buildListOrStates()),
+                Expanded(child: _buildListOrStates(l10n)),
               ],
             ),
     );
   }
 
-  Widget _buildListOrStates() {
+  Widget _buildListOrStates(AppLocalizations l10n) {
     final ColorScheme color = Theme.of(context).colorScheme;
 
     if (_loading) {
@@ -249,7 +250,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
             const CircularProgressIndicator(),
             const SizedBox(height: 12),
             Text(
-              '正在加载…',
+              l10n.loading,
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -271,7 +272,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Text(
-                '网络请求失败：$_errorMessage',
+                l10n.networkError(_errorMessage!),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: color.error),
               ),
@@ -281,7 +282,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
               FilledButton.tonalIcon(
                 onPressed: () => _loadStoreSkills(forceRefresh: true),
                 icon: const Icon(Icons.refresh),
-                label: const Text('重试'),
+                label: Text(l10n.retry),
               ),
           ],
         ),
@@ -299,7 +300,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
               color: color.onSurfaceVariant.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 12),
-            const Text('没有找到符合条件的 Skill'),
+            Text(l10n.noMatchSkill),
           ],
         ),
       );
@@ -320,13 +321,14 @@ class _SkillStorePageState extends State<SkillStorePage> {
           item: item,
           isInstalling: isInstalling,
           onInstall: () => _onInstall(item),
-          onViewDetail: () => _onViewDetail(item),
+          onViewDetail: () => _onViewDetail(item, l10n),
+          l10n: l10n,
         );
       },
     );
   }
 
-  /// 执行安装操作：下载仓库 zip，解压出目标 skill 目录并安装到默认 Agent
+  /// 执行安装操作
   Future<void> _onInstall(StoreSkillItem item) async {
     final AgentTarget target = _installTarget;
     setState(() {
@@ -446,7 +448,6 @@ class _SkillStorePageState extends State<SkillStorePage> {
 
     final bool isWin = Platform.isWindows;
     final String? appData = Platform.environment['APPDATA'];
-    final String? localAppData = Platform.environment['LOCALAPPDATA'];
 
     // 默认内置 Agent 的目录映射（与 SkillService 一致）
     final Map<String, String> primaryRoots = <String, String>{
@@ -479,10 +480,10 @@ class _SkillStorePageState extends State<SkillStorePage> {
   }
 
   /// 查看 Skill 详情弹窗
-  Future<void> _onViewDetail(StoreSkillItem item) async {
+  Future<void> _onViewDetail(StoreSkillItem item, AppLocalizations l10n) async {
     await showDialog<void>(
       context: context,
-      builder: (BuildContext context) => _StoreSkillDetailDialog(item: item),
+      builder: (BuildContext context) => _StoreSkillDetailDialog(item: item, l10n: l10n),
     );
   }
 }
@@ -496,6 +497,7 @@ class _SourceSwitcher extends StatelessWidget {
     required this.onRefresh,
     required this.isRefreshing,
     required this.isLoading,
+    required this.l10n,
     this.showRefresh = true,
   });
 
@@ -506,6 +508,7 @@ class _SourceSwitcher extends StatelessWidget {
   final bool isRefreshing;
   final bool isLoading;
   final bool showRefresh;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -563,7 +566,7 @@ class _SourceSwitcher extends StatelessWidget {
             maintainState: true,
             child: IconButton(
               onPressed: isLoading ? null : onRefresh,
-              tooltip: '刷新缓存',
+              tooltip: l10n.refreshCache,
               iconSize: 18,
               icon: isRefreshing
                   ? const SizedBox(
@@ -587,12 +590,14 @@ class _StoreSkillCard extends StatelessWidget {
     required this.isInstalling,
     required this.onInstall,
     required this.onViewDetail,
+    required this.l10n,
   });
 
   final StoreSkillItem item;
   final bool isInstalling;
   final VoidCallback onInstall;
   final VoidCallback onViewDetail;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -691,7 +696,7 @@ class _StoreSkillCard extends StatelessWidget {
                     )
                   : IconButton(
                       onPressed: onInstall,
-                      tooltip: '安装',
+                      tooltip: l10n.install,
                       iconSize: 20,
                       icon: Icon(Icons.download_rounded, color: color.onSurfaceVariant),
                     ),
@@ -705,9 +710,10 @@ class _StoreSkillCard extends StatelessWidget {
 
 /// 商店 Skill 详情弹窗
 class _StoreSkillDetailDialog extends StatelessWidget {
-  const _StoreSkillDetailDialog({required this.item});
+  const _StoreSkillDetailDialog({required this.item, required this.l10n});
 
   final StoreSkillItem item;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -728,9 +734,9 @@ class _StoreSkillDetailDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _DetailRow(label: '作者', value: item.skill.author),
+              _DetailRow(label: l10n.author, value: item.skill.author),
               _DetailRow(
-                label: '描述',
+                label: l10n.description,
                 value: item.skill.description,
               ),
             ],
@@ -740,7 +746,7 @@ class _StoreSkillDetailDialog extends StatelessWidget {
       actions: <Widget>[
         FilledButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('关闭'),
+          child: Text(l10n.close),
         ),
       ],
     );
@@ -778,10 +784,12 @@ class _SkillsmpSearchHeader extends StatefulWidget {
   const _SkillsmpSearchHeader({
     required this.settingsService,
     required this.onSearch,
+    required this.l10n,
   });
 
   final SettingsService settingsService;
   final void Function(String query, String apiKey) onSearch;
+  final AppLocalizations l10n;
 
   @override
   State<_SkillsmpSearchHeader> createState() => _SkillsmpSearchHeaderState();
@@ -823,11 +831,11 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Row(
+          title: Row(
             children: <Widget>[
-              Icon(Icons.settings_outlined),
-              SizedBox(width: 8),
-              Text('Skillsmp 设置'),
+              const Icon(Icons.settings_outlined),
+              const SizedBox(width: 8),
+              Text(widget.l10n.skillsmpSettings),
             ],
           ),
           content: SizedBox(
@@ -836,12 +844,12 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text('设置您自己的 API Key 可以获得更多的搜索额度。'),
+                Text(widget.l10n.apiKeyHint),
                 const SizedBox(height: 8),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text('获取 API Key：'),
+                    Text(widget.l10n.getApiKey),
                     Expanded(
                       child: InkWell(
                         onTap: () async {
@@ -880,11 +888,11 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
+              child: Text(widget.l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('保存'),
+              child: Text(widget.l10n.save),
             ),
           ],
         );
@@ -915,7 +923,7 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
           child: TextField(
             controller: _queryController,
             decoration: InputDecoration(
-              hintText: '支持语义搜索，例如：最适合前端开发的SKILL',
+              hintText: widget.l10n.searchHint,
               prefixIcon: Icon(Icons.search, color: color.primary),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -945,7 +953,7 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
           child: FilledButton.icon(
             onPressed: _onSearch,
             icon: const Icon(Icons.search, size: 18),
-            label: const Text('搜索'),
+            label: Text(widget.l10n.search),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               shape: RoundedRectangleBorder(
@@ -960,7 +968,7 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
           width: 44,
           child: IconButton(
             onPressed: _openSettingsDialog,
-            tooltip: 'Skillsmp 配置',
+            tooltip: widget.l10n.skillsmpSettings,
             iconSize: 20,
             icon: Icon(Icons.settings, color: color.onSurfaceVariant),
           ),

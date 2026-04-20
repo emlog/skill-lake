@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/generated/app_localizations.dart';
 
 import '../models/agent_target.dart';
 
 /// Agent 管理页面，支持启用/禁用 Agent 以及设置默认 Agent。
-///
-/// - 每个 Agent 卡片右侧有「设为默认」图标按钮
-/// - 当前默认 Agent 卡片高亮显示，默认标记不可取消（只能通过设置其他 Agent 来切换）
 class AgentManagementPage extends StatelessWidget {
   const AgentManagementPage({
     super.key,
@@ -25,6 +23,7 @@ class AgentManagementPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -35,8 +34,8 @@ class AgentManagementPage extends StatelessWidget {
             children: <Widget>[
               IconButton(
                 icon: const Icon(Icons.add),
-                tooltip: '添加自定义 Agent',
-                onPressed: () => _showAddAgentDialog(context),
+                tooltip: l10n.addCustomAgent,
+                onPressed: () => _showAddAgentDialog(context, l10n),
               ),
             ],
           ),
@@ -51,6 +50,7 @@ class AgentManagementPage extends StatelessWidget {
               final AgentTarget item = agents[index];
               return _AgentCard(
                 agent: item,
+                l10n: l10n,
                 // 启用/禁用开关回调
                 onToggleEnabled: (bool value) {
                   final List<AgentTarget> updated = <AgentTarget>[...agents];
@@ -61,8 +61,8 @@ class AgentManagementPage extends StatelessWidget {
                 onSetDefault: item.isDefault
                     ? null // 已是默认则禁用按钮
                     : () => onDefaultAgentChanged(item.id),
-                onEdit: () => _editCustomAgent(context, index, item),
-                onDelete: () => _deleteCustomAgent(context, index, item),
+                onEdit: () => _editCustomAgent(context, index, item, l10n),
+                onDelete: () => _deleteCustomAgent(context, index, item, l10n),
               );
             },
           ),
@@ -71,7 +71,7 @@ class AgentManagementPage extends StatelessWidget {
     );
   }
 
-  void _showAddAgentDialog(BuildContext context) {
+  void _showAddAgentDialog(BuildContext context, AppLocalizations l10n) {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController dirController = TextEditingController();
 
@@ -79,15 +79,15 @@ class AgentManagementPage extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('添加自定义 Agent'),
+          title: Text(l10n.addCustomAgent),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Agent 名称',
+                decoration: InputDecoration(
+                  labelText: l10n.agentName,
                   hintText: '例如：My Custom Agent',
                 ),
                 autofocus: true,
@@ -95,8 +95,8 @@ class AgentManagementPage extends StatelessWidget {
               const SizedBox(height: 16),
               TextField(
                 controller: dirController,
-                decoration: const InputDecoration(
-                  labelText: 'Skill 目录',
+                decoration: InputDecoration(
+                  labelText: l10n.skillsDirectory,
                   hintText: '例如：~/.myagent/skills/',
                 ),
               ),
@@ -105,7 +105,7 @@ class AgentManagementPage extends StatelessWidget {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () {
@@ -123,7 +123,7 @@ class AgentManagementPage extends StatelessWidget {
                   Navigator.of(dialogContext).pop();
                 }
               },
-              child: const Text('添加'),
+              child: Text(l10n.add),
             ),
           ],
         );
@@ -131,7 +131,7 @@ class AgentManagementPage extends StatelessWidget {
     );
   }
 
-  void _editCustomAgent(BuildContext context, int index, AgentTarget agent) {
+  void _editCustomAgent(BuildContext context, int index, AgentTarget agent, AppLocalizations l10n) {
     final TextEditingController nameController = TextEditingController(text: agent.displayName);
     final TextEditingController dirController = TextEditingController(text: agent.skillsDirectory);
 
@@ -139,27 +139,27 @@ class AgentManagementPage extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('编辑自定义 Agent'),
+          title: Text(l10n.editCustomAgent),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Agent 名称'),
+                decoration: InputDecoration(labelText: l10n.agentName),
                 autofocus: true,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: dirController,
-                decoration: const InputDecoration(labelText: 'Skill 目录'),
+                decoration: InputDecoration(labelText: l10n.skillsDirectory),
               ),
             ],
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () {
@@ -175,7 +175,7 @@ class AgentManagementPage extends StatelessWidget {
                   Navigator.of(dialogContext).pop();
                 }
               },
-              child: const Text('保存'),
+              child: Text(l10n.save),
             ),
           ],
         );
@@ -183,17 +183,17 @@ class AgentManagementPage extends StatelessWidget {
     );
   }
 
-  void _deleteCustomAgent(BuildContext context, int index, AgentTarget agent) {
+  void _deleteCustomAgent(BuildContext context, int index, AgentTarget agent, AppLocalizations l10n) {
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('删除自定义 Agent'),
-          content: Text('确定要删除「${agent.displayName}」吗？'),
+          title: Text(l10n.deleteCustomAgent),
+          content: Text(l10n.confirmDeleteContent(agent.displayName)),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -203,13 +203,10 @@ class AgentManagementPage extends StatelessWidget {
               onPressed: () {
                 final List<AgentTarget> updated = <AgentTarget>[...agents];
                 updated.removeAt(index);
-                // 如果删除的是默认 Agent，这里会导致没有默认 Agent。
-                // 简单处理：如果是默认，且列表还有其他开启的数据，可以在后面处理，
-                // 但 `onAgentsChanged` 处理更佳，这里直接交由上层。
                 onAgentsChanged(updated);
                 Navigator.of(dialogContext).pop();
               },
-              child: const Text('删除'),
+              child: Text(l10n.delete),
             ),
           ],
         );
@@ -222,6 +219,7 @@ class AgentManagementPage extends StatelessWidget {
 class _AgentCard extends StatelessWidget {
   const _AgentCard({
     required this.agent,
+    required this.l10n,
     required this.onToggleEnabled,
     required this.onSetDefault,
     this.onEdit,
@@ -229,6 +227,7 @@ class _AgentCard extends StatelessWidget {
   });
 
   final AgentTarget agent;
+  final AppLocalizations l10n;
 
   /// 切换启用状态的回调
   final ValueChanged<bool> onToggleEnabled;
@@ -246,7 +245,7 @@ class _AgentCard extends StatelessWidget {
     final bool isDefault = agent.isDefault;
 
     return GestureDetector(
-      onTap: () => _showAgentDetails(context, agent),
+      onTap: () => _showAgentDetails(context, agent, l10n),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
@@ -303,7 +302,7 @@ class _AgentCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              '默认',
+                              l10n.defaultLabel,
                               style: Theme.of(context)
                                   .textTheme
                                   .labelSmall
@@ -319,7 +318,7 @@ class _AgentCard extends StatelessWidget {
               // 编辑/删除按钮（仅限自定义Agent）
               if (agent.id.startsWith('custom_')) ...[
                 Tooltip(
-                  message: '编辑 Agent',
+                  message: l10n.edit,
                   child: IconButton(
                     onPressed: onEdit,
                     iconSize: 20,
@@ -327,7 +326,7 @@ class _AgentCard extends StatelessWidget {
                   ),
                 ),
                 Tooltip(
-                  message: '删除 Agent',
+                  message: l10n.delete,
                   child: IconButton(
                     onPressed: onDelete,
                     iconSize: 20,
@@ -337,7 +336,7 @@ class _AgentCard extends StatelessWidget {
               ],
               // 设为默认按钮
               Tooltip(
-                message: isDefault ? '当前默认 Agent' : '设为默认 Agent',
+                message: isDefault ? l10n.currentDefaultAgent : l10n.setDefaultAgent,
                 child: IconButton(
                   onPressed: onSetDefault,
                   iconSize: 20,
@@ -364,7 +363,7 @@ class _AgentCard extends StatelessWidget {
     );
   }
 
-  void _showAgentDetails(BuildContext context, AgentTarget agent) {
+  void _showAgentDetails(BuildContext context, AgentTarget agent, AppLocalizations l10n) {
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -375,13 +374,13 @@ class _AgentCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               _DetailRow(
-                label: '主页',
+                label: l10n.homepage,
                 value: agent.homepageUrl ?? '无',
                 isLink: agent.homepageUrl != null && agent.homepageUrl!.isNotEmpty,
               ),
               const SizedBox(height: 8),
               _DetailRow(
-                label: 'Skill 目录',
+                label: l10n.skillsDirectory,
                 value: agent.skillsDirectory ?? '未配置或不支持',
               ),
             ],
@@ -389,7 +388,7 @@ class _AgentCard extends StatelessWidget {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('关闭'),
+              child: Text(l10n.close),
             ),
           ],
         );

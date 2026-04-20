@@ -49,4 +49,17 @@ class SettingsService {
     settings['skillsmpApiKey'] = apiKey;
     await _saveSettings(settings);
   }
+
+  /// 获取保存的语言设置，默认英文
+  Future<String> getLocale() async {
+    final Map<String, dynamic> settings = await _loadSettings();
+    return settings['locale'] as String? ?? 'en';
+  }
+
+  /// 保存语言设置
+  Future<void> saveLocale(String localeCode) async {
+    final Map<String, dynamic> settings = await _loadSettings();
+    settings['locale'] = localeCode;
+    await _saveSettings(settings);
+  }
 }

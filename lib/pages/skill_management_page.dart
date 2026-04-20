@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../l10n/generated/app_localizations.dart';
 
 import '../models/agent_target.dart';
 import '../models/skill.dart';
@@ -8,8 +9,6 @@ import '../services/skill_service.dart';
 import '../utils/snackbar_util.dart';
 
 /// Skill 管理页面，展示指定 Agent 的已安装 Skill 列表。
-///
-/// 若当前 Agent 不是默认 Agent，则提供「从默认 Agent 同步」功能按钮。
 class SkillManagementPage extends StatefulWidget {
   const SkillManagementPage({
     super.key,
@@ -101,6 +100,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -119,6 +119,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                   selectedIndex: widget.selectedAgentIndex,
                   onChanged: widget.onAgentChanged,
                   defaultAgent: widget.defaultAgent,
+                  l10n: l10n,
                 ),
               ),
               const SizedBox(width: 8),
@@ -126,22 +127,22 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
               if (widget.defaultAgent != null &&
                   widget.defaultAgent!.id != widget.selectedAgent.id) ...<Widget>[
                 IconButton(
-                  tooltip: '从默认 Agent（${widget.defaultAgent!.displayName}）同步 Skill',
+                  tooltip: '${l10n.syncFromDefault}（${widget.defaultAgent!.displayName}）',
                   iconSize: 18,
-                  onPressed: _onSyncFromDefault,
+                  onPressed: () => _onSyncFromDefault(l10n),
                   icon: const Icon(Icons.sync_alt_outlined),
                 ),
                 const SizedBox(width: 4),
               ],
               IconButton(
-                tooltip: '上传安装',
+                tooltip: l10n.uploadInstall,
                 iconSize: 18,
                 onPressed: _onUploadInstall,
                 icon: const Icon(Icons.upload),
               ),
               const SizedBox(width: 4),
               IconButton(
-                tooltip: '刷新',
+                tooltip: l10n.refresh,
                 iconSize: 18,
                 onPressed: _loadSkills,
                 icon: const Icon(Icons.refresh),
@@ -151,12 +152,11 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
           ),
         ),
         const SizedBox(height: 12),
-        const SizedBox(height: 12),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _skills.isEmpty
-                  ? const Center(child: Text('暂无已安装 Skill'))
+                  ? Center(child: Text(l10n.noInstalledSkill))
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: _skills.length + 1,
@@ -167,7 +167,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Center(
                               child: Text(
-                                '总数 ${_skills.length}',
+                                l10n.totalCount(_skills.length),
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall
@@ -212,7 +212,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                               ),
                             ),
                             title: GestureDetector(
-                              onTap: () => _onView(skill),
+                              onTap: () => _onView(skill, l10n),
                               child: MouseRegion(
                                 cursor: SystemMouseCursors.click,
                                 child: Text(
@@ -248,17 +248,17 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                               spacing: 4,
                               children: <Widget>[
                                 IconButton(
-                                  tooltip: '查看',
+                                  tooltip: l10n.view,
                                   iconSize: 20,
-                                  onPressed: () => _onView(skill),
+                                  onPressed: () => _onView(skill, l10n),
                                   icon: const Icon(Icons.more_horiz),
                                   color: color.onSurfaceVariant,
                                 ),
                                 IconButton(
-                                  tooltip: '删除',
+                                  tooltip: l10n.delete,
                                   iconSize: 20,
                                   onPressed:
-                                      canDelete ? () => _onDelete(skill) : null,
+                                      canDelete ? () => _onDelete(skill, l10n) : null,
                                   icon: const Icon(Icons.delete_outline),
                                   color: color.onSurfaceVariant,
                                 ),
@@ -274,7 +274,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
   }
 
   /// 从默认 Agent 同步 Skill 到当前 Agent（单向，不可反向同步）
-  Future<void> _onSyncFromDefault() async {
+  Future<void> _onSyncFromDefault(AppLocalizations l10n) async {
     final AgentTarget? defaultAgent = widget.defaultAgent;
     if (defaultAgent == null || defaultAgent.id == widget.selectedAgent.id) {
       return;
@@ -334,17 +334,17 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
   }
 
   /// 删除 Skill：物理删除对应文件夹，成功后刷新列表。
-  Future<void> _onDelete(Skill skill) async {
+  Future<void> _onDelete(Skill skill, AppLocalizations l10n) async {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('确认删除'),
-          content: Text('确定要删除 ${skill.name} 吗？\n此操作将不可恢复。'),
+          title: Text(l10n.confirmDelete),
+          content: Text(l10n.confirmDeleteContent(skill.name)),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
@@ -352,7 +352,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                 backgroundColor: Theme.of(context).colorScheme.error,
                 foregroundColor: Theme.of(context).colorScheme.onError,
               ),
-              child: const Text('删除'),
+              child: Text(l10n.delete),
             ),
           ],
         );
@@ -375,10 +375,10 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     }
   }
 
-  Future<void> _onView(Skill skill) async {
+  Future<void> _onView(Skill skill, AppLocalizations l10n) async {
     await showDialog<void>(
       context: context,
-      builder: (BuildContext context) => _SkillDetailDialog(skill: skill),
+      builder: (BuildContext context) => _SkillDetailDialog(skill: skill, l10n: l10n),
     );
   }
 }
@@ -388,6 +388,7 @@ class _InlineAgentFilterBar extends StatelessWidget {
     required this.agents,
     required this.selectedIndex,
     required this.onChanged,
+    required this.l10n,
     this.defaultAgent,
   });
 
@@ -395,17 +396,18 @@ class _InlineAgentFilterBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
   final AgentTarget? defaultAgent;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     if (agents.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
           children: <Widget>[
-            Icon(Icons.info_outline, size: 18),
-            SizedBox(width: 8),
-            Text('当前没有启用中的 Agent'),
+            const Icon(Icons.info_outline, size: 18),
+            const SizedBox(width: 8),
+            Text(l10n.noEnabledAgentHint),
           ],
         ),
       );
@@ -457,7 +459,7 @@ class _InlineAgentFilterBar extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        '默认',
+                        l10n.defaultLabel,
                         style: TextStyle(
                           fontSize: 9,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -490,7 +492,6 @@ class _InlineAgentFilterBar extends StatelessWidget {
         return Icons.terminal;
       case 'sparkles':
         return Icons.auto_awesome_outlined;
-      // Antigravity 专属图标
       case 'gravity':
       case 'antigravity':
         return Icons.rocket_launch_outlined;
@@ -501,9 +502,10 @@ class _InlineAgentFilterBar extends StatelessWidget {
 }
 
 class _SkillDetailDialog extends StatelessWidget {
-  const _SkillDetailDialog({required this.skill});
+  const _SkillDetailDialog({required this.skill, required this.l10n});
 
   final Skill skill;
+  final AppLocalizations l10n;
 
   Future<String> _loadSkillMd() async {
     final String? path = skill.installedPath;
@@ -545,9 +547,9 @@ class _SkillDetailDialog extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            _SkillDetailRow(label: '描述', value: skill.description),
+            _SkillDetailRow(label: l10n.description, value: skill.description),
             _SkillDetailRow(
-              label: '路径',
+              label: l10n.path,
               value: skill.installedPath?.isNotEmpty == true
                   ? skill.installedPath!
                   : skill.source,
@@ -595,7 +597,7 @@ class _SkillDetailDialog extends StatelessWidget {
       actions: <Widget>[
         FilledButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('关闭'),
+          child: Text(l10n.close),
         ),
       ],
     );

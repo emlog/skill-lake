@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/generated/app_localizations.dart';
 
 import 'models/agent_target.dart';
 import 'pages/agent_management_page.dart';
 import 'pages/skill_management_page.dart';
 import 'pages/skill_store_page.dart';
 import 'services/agent_service.dart';
+import 'services/settings_service.dart';
 import 'widgets/app_scaffold_shell.dart';
 
 void main() {
@@ -12,8 +15,36 @@ void main() {
   runApp(const SkillLakeApp());
 }
 
-class SkillLakeApp extends StatelessWidget {
+class SkillLakeApp extends StatefulWidget {
   const SkillLakeApp({super.key});
+
+  @override
+  State<SkillLakeApp> createState() => _SkillLakeAppState();
+}
+
+class _SkillLakeAppState extends State<SkillLakeApp> {
+  final SettingsService _settingsService = SettingsService();
+  Locale _locale = const Locale('en');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocale();
+  }
+
+  Future<void> _loadLocale() async {
+    final String code = await _settingsService.getLocale();
+    setState(() {
+      _locale = Locale(code);
+    });
+  }
+
+  Future<void> _changeLocale(String code) async {
+    await _settingsService.saveLocale(code);
+    setState(() {
+      _locale = Locale(code);
+    });
+  }
 
   static ThemeData _buildTheme(Brightness brightness) {
     // 采用中性偏冷的深空黑作为种子色，接近 ChatGPT 新版的极简色调
@@ -90,13 +121,31 @@ class SkillLakeApp extends StatelessWidget {
       darkTheme: _buildTheme(Brightness.dark),
       // 跟随系统浅色/深色模式自动切换
       themeMode: ThemeMode.system,
-      home: const HomeScreen(),
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const <Locale>[
+        Locale('en'),
+        Locale('zh'),
+      ],
+      locale: _locale,
+      home: HomeScreen(
+        onLocaleChanged: _changeLocale,
+      ),
     );
   }
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    required this.onLocaleChanged,
+  });
+
+  final ValueChanged<String> onLocaleChanged;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -176,8 +225,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final Widget content;
     if (enabledAgents.isEmpty && _selectedMenu != 1) {
-      content = const Center(
-        child: Text('没有启用中的 Agent，请在「Agent 管理」中至少开启一个。'),
+      content = Center(
+        child: Text(AppLocalizations.of(context)!.noEnabledAgentHint),
       );
     } else {
       content = switch (_selectedMenu) {
@@ -226,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return AppScaffoldShell(
       selectedMenu: _selectedMenu,
       onMenuChanged: (int index) => setState(() => _selectedMenu = index),
+      onLocaleChanged: widget.onLocaleChanged,
       content: content,
     );
   }
