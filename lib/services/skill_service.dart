@@ -296,8 +296,9 @@ class SkillService {
   String _primaryDiscoveryRoot(AgentTarget agent, String home) {
     final List<String> roots = _getRootsForAgent(agent, home);
     if (roots.isEmpty) {
-      // 兜底：使用 ~/.skill_lake/<agentId>/skills
-      return '$home/.skill_lake/${agent.id}/skills';
+      // 兜底：根据平台构造默认技能目录
+      final String sep = Platform.pathSeparator;
+      return '${home}${sep}.skill_lake${sep}${agent.id}${sep}skills';
     }
     return roots.first;
   }
@@ -417,15 +418,29 @@ class SkillService {
   /// 返回可能的 HOME 目录候选列表（通过环境变量推断）。
   List<String> _homeCandidates() {
     final Set<String> homes = <String>{};
-    final String? envHome = Platform.environment['HOME'];
-    if (envHome != null && envHome.trim().isNotEmpty) {
-      homes.add(envHome.trim());
+
+    if (Platform.isWindows) {
+      final String? userProfile = Platform.environment['USERPROFILE'];
+      if (userProfile != null && userProfile.trim().isNotEmpty) {
+        homes.add(userProfile.trim());
+      }
+      final String? homeDrive = Platform.environment['HOMEDRIVE'];
+      final String? homePath = Platform.environment['HOMEPATH'];
+      if (homeDrive != null && homePath != null) {
+        homes.add('${homeDrive.trim()}${homePath.trim()}');
+      }
+    } else {
+      final String? envHome = Platform.environment['HOME'];
+      if (envHome != null && envHome.trim().isNotEmpty) {
+        homes.add(envHome.trim());
+      }
+
+      final String? user = Platform.environment['USER'];
+      if (user != null && user.trim().isNotEmpty) {
+        homes.add('/Users/${user.trim()}');
+      }
     }
 
-    final String? user = Platform.environment['USER'];
-    if (user != null && user.trim().isNotEmpty) {
-      homes.add('/Users/${user.trim()}');
-    }
     return homes.toList();
   }
 
@@ -436,41 +451,81 @@ class SkillService {
       final String dir = agent.skillsDirectory!.replaceAll('~', home);
       return <String>[dir];
     }
-    
+
+    final bool isWin = Platform.isWindows;
+    final String? appData = Platform.environment['APPDATA'];
+    final String? localAppData = Platform.environment['LOCALAPPDATA'];
+
     final Map<String, List<String>> builtin = <String, List<String>>{
       // Cursor 官方 skills 目录
-      'cursor': <String>[
-        '$home/.cursor/skills',
-        '$home/Library/Application Support/Cursor/skills',
-      ],
+      'cursor': isWin
+          ? <String>[
+              '$home\\.cursor\\skills',
+              if (appData != null) '$appData\\Cursor\\skills',
+              if (localAppData != null) '$localAppData\\Cursor\\skills',
+            ]
+          : <String>[
+              '$home/.cursor/skills',
+              '$home/Library/Application Support/Cursor/skills',
+            ],
       // Claude Code 官方 skills 目录
-      'claude_code': <String>[
-        '$home/.claude/skills',
-        '$home/Library/Application Support/Claude/skills',
-      ],
+      'claude_code': isWin
+          ? <String>[
+              '$home\\.claude\\skills',
+              if (appData != null) '$appData\\Claude\\skills',
+            ]
+          : <String>[
+              '$home/.claude/skills',
+              '$home/Library/Application Support/Claude/skills',
+            ],
       // Codex CLI 官方 skills 目录
-      'codex': <String>[
-        '$home/.codex/skills',
-        '$home/Library/Application Support/Codex/skills',
-      ],
+      'codex': isWin
+          ? <String>[
+              '$home\\.codex\\skills',
+              if (appData != null) '$appData\\Codex\\skills',
+            ]
+          : <String>[
+              '$home/.codex/skills',
+              '$home/Library/Application Support/Codex/skills',
+            ],
       // Trae 官方 skills 目录
-      'trae': <String>[
-        '$home/.trae/skills',
-        '$home/Library/Application Support/Trae/skills',
-      ],
+      'trae': isWin
+          ? <String>[
+              '$home\\.trae\\skills',
+              if (appData != null) '$appData\\Trae\\skills',
+            ]
+          : <String>[
+              '$home/.trae/skills',
+              '$home/Library/Application Support/Trae/skills',
+            ],
       // Gemini CLI 官方 skills 目录
-      'gemini_cli': <String>[
-        '$home/.gemini/skills',
-      ],
+      'gemini_cli': isWin
+          ? <String>[
+              '$home\\.gemini\\skills',
+              if (appData != null) '$appData\\Gemini\\skills',
+            ]
+          : <String>[
+              '$home/.gemini/skills',
+            ],
       // Antigravity 官方 skills 目录
-      'antigravity': <String>[
-        '$home/.gemini/antigravity/skills',
-        '$home/Library/Application Support/Antigravity/skills',
-      ],
+      'antigravity': isWin
+          ? <String>[
+              '$home\\.gemini\\antigravity\\skills',
+              if (appData != null) '$appData\\Antigravity\\skills',
+            ]
+          : <String>[
+              '$home/.gemini/antigravity/skills',
+              '$home/Library/Application Support/Antigravity/skills',
+            ],
       // GitHub Copilot 官方 skills 目录
-      'github_copilot': <String>[
-        '$home/.copilot/skills',
-      ],
+      'github_copilot': isWin
+          ? <String>[
+              '$home\\.copilot\\skills',
+              if (appData != null) '$appData\\Copilot\\skills',
+            ]
+          : <String>[
+              '$home/.copilot/skills',
+            ],
     };
     return builtin[agent.id] ?? const <String>[];
   }

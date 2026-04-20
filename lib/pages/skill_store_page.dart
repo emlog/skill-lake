@@ -432,7 +432,9 @@ class _SkillStorePageState extends State<SkillStorePage> {
 
   /// 获取 Agent 的首选 skills 安装目录
   Future<String> _getInstallRoot(AgentTarget agent) async {
-    final String? home = Platform.environment['HOME'];
+    final String? home = Platform.isWindows
+        ? (Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'])
+        : Platform.environment['HOME'];
     if (home == null || home.isEmpty) {
       throw Exception('无法获取 HOME 目录');
     }
@@ -442,19 +444,32 @@ class _SkillStorePageState extends State<SkillStorePage> {
       return agent.skillsDirectory!.replaceAll('~', home);
     }
 
+    final bool isWin = Platform.isWindows;
+    final String? appData = Platform.environment['APPDATA'];
+    final String? localAppData = Platform.environment['LOCALAPPDATA'];
+
     // 默认内置 Agent 的目录映射（与 SkillService 一致）
     final Map<String, String> primaryRoots = <String, String>{
-      'cursor': '$home/.cursor/skills',
-      'claude_code': '$home/.claude/skills',
-      'codex': '$home/.codex/skills',
-      'trae': '$home/.trae/skills',
-      'gemini_cli': '$home/.gemini/skills',
-      'antigravity': '$home/.gemini/antigravity/skills',
-      'github_copilot': '$home/.copilot/skills',
+      'cursor': isWin
+          ? (appData != null ? '$appData\\Cursor\\skills' : '$home\\.cursor\\skills')
+          : '$home/.cursor/skills',
+      'claude_code': isWin
+          ? (appData != null ? '$appData\\Claude\\skills' : '$home\\.claude\\skills')
+          : '$home/.claude/skills',
+      'codex': isWin
+          ? (appData != null ? '$appData\\Codex\\skills' : '$home\\.codex\\skills')
+          : '$home/.codex/skills',
+      'trae': isWin
+          ? (appData != null ? '$appData\\Trae\\skills' : '$home\\.trae\\skills')
+          : '$home/.trae/skills',
+      'gemini_cli': isWin ? '$home\\.gemini\\skills' : '$home/.gemini/skills',
+      'antigravity': isWin
+          ? (appData != null ? '$appData\\Antigravity\\skills' : '$home\\.gemini\\antigravity\\skills')
+          : '$home/.gemini/antigravity/skills',
+      'github_copilot': isWin ? '$home\\.copilot\\skills' : '$home/.copilot/skills',
     };
 
-    final String root =
-        primaryRoots[agent.id] ?? '$home/.skill_lake/${agent.id}/skills';
+    final String root = primaryRoots[agent.id] ?? '${home}${Platform.pathSeparator}.skill_lake${Platform.pathSeparator}${agent.id}${Platform.pathSeparator}skills';
 
     final Directory dir = Directory(root);
     if (!await dir.exists()) {

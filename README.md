@@ -1,10 +1,10 @@
 # 🌊 Skill Lake
 
-![Platform](https://img.shields.io/badge/Platform-macOS-blue)
+![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-blue)
 ![Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B?logo=flutter)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**Skill Lake** 是一款 macOS 上的 AI Agent Skill 管理工具。支持搜索、安装、删除、同步 Skill。
+**Skill Lake** 是一款跨平台（macOS / Windows）的 AI Agent Skill 管理工具。支持搜索、安装、删除、同步 Skill。
 
 ## 核心特性
 
@@ -16,13 +16,13 @@
 
 | AI 工具 | 个人级 Skills 路径 | 官方网站 |
 | :--- | :--- | :--- |
-| **Cursor** | `~/.cursor/skills/` | <https://cursor.com/> |
-| **Claude Code** | `~/.claude/skills/` | <https://claude.com/product/claude-code> |
-| **Codex** | `~/.codex/skills/` | <https://openai.com/codex> |
-| **Trae** | `~/.trae/skills/` | <https://www.trae.ai/> |
-| **Gemini CLI** | `~/.gemini/skills/` | <https://geminicli.com/> |
-| **Antigravity** | `~/.gemini/antigravity/skills/` | <https://antigravity.google/> |
-| **GitHub Copilot** | `~/.copilot/skills/` | <https://github.com/features/copilot> |
+| **Cursor** | `~/.cursor/skills/` (Windows: `%USERPROFILE%\\.cursor\\skills` or `%APPDATA%\\Cursor\\skills`) | <https://cursor.com/> |
+| **Claude Code** | `~/.claude/skills/` (Windows: `%USERPROFILE%\\.claude\\skills` or `%APPDATA%\\Claude\\skills`) | <https://claude.com/product/claude-code> |
+| **Codex** | `~/.codex/skills/` (Windows: `%USERPROFILE%\\.codex\\skills` or `%APPDATA%\\Codex\\skills`) | <https://openai.com/codex> |
+| **Trae** | `~/.trae/skills/` (Windows: `%USERPROFILE%\\.trae\\skills` or `%APPDATA%\\Trae\\skills`) | <https://www.trae.ai/> |
+| **Gemini CLI** | `~/.gemini/skills/` (Windows: `%USERPROFILE%\\.gemini\\skills`) | <https://geminicli.com/> |
+| **Antigravity** | `~/.gemini/antigravity/skills/` (Windows: `%USERPROFILE%\\.gemini\\antigravity\\skills` or `%APPDATA%\\Antigravity\\skills`) | <https://antigravity.google/> |
+| **GitHub Copilot** | `~/.copilot/skills/` (Windows: `%USERPROFILE%\\.copilot\\skills` or `%APPDATA%\\Copilot\\skills`) | <https://github.com/features/copilot> |
 
 ## 安装
 
@@ -47,10 +47,18 @@ git clone https://github.com/emlog/skill-lake.git
 cd skill-lake
 ```
 
-### **2.启用 macOS 桌面开发支持**（如果你是首次运行 Flutter 桌面端项目）：
+### **2.启用桌面开发支持**（如果你是首次运行 Flutter 桌面端项目）：
+
+- macOS:
 
 ```bash
 flutter config --enable-macos-desktop
+```
+
+- Windows:
+
+```bash
+flutter config --enable-windows-desktop
 ```
 
 ### **3.获取项目依赖包**：
@@ -61,9 +69,18 @@ flutter pub get
 
 ### **4.编译并启动应用**：
 
+- macOS:
+
 ```bash
 flutter run -d macos
 ```
+
+- Windows:
+
+```bash
+flutter run -d windows
+```
+
 
 ## ❓ 常见问题 (FAQ)
 
