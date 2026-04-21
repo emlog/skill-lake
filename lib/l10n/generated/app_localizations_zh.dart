@@ -78,6 +78,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncFromDefault => '从默认 Agent 同步';
 
   @override
+  String get syncAllTo => '全部同步到...';
+
+  @override
+  String get syncTo => '同步到...';
+
+  @override
+  String get selectTargetAgent => '选择同步到的目标 Agent';
+
+  @override
   String get uploadInstall => '上传安装';
 
   @override

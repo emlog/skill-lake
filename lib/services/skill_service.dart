@@ -115,21 +115,26 @@ class SkillService {
     }
   }
 
-  /// 将默认 Agent（[defaultAgentId]）的所有 Skill 文件夹**物理复制**到目标 Agent（[targetAgentId]）的首选目录。
+  /// 将 [sourceAgent] 的所有 Skill 文件夹**物理复制**到目标 Agent（[targetAgent]）的首选目录。
   ///
   /// 同步规则：
-  /// 1. 扫描默认 Agent 的发现根目录，找到所有含 SKILL.md 的一级子目录。
+  /// 1. 获取源 Agent 的所有 Skill 文件夹。
   /// 2. 将每个 Skill 文件夹递归复制到目标 Agent 的首选发现根目录。
   /// 3. 同名则先删除旧文件夹再覆盖。
   /// 4. 无索引写入，刷新后从文件系统自动发现。
   ///
   /// 返回实际成功复制（新增 + 覆盖）的 Skill 数量。
-  Future<int> syncSkillsFromDefaultAgent({
-    required AgentTarget defaultAgent,
+  Future<int> syncAllSkills({
+    required AgentTarget sourceAgent,
     required AgentTarget targetAgent,
   }) async {
-    // 不允许将默认 Agent 的 skill 同步给自身
-    if (defaultAgent.id == targetAgent.id) {
+    // 不允许同步给自身
+    if (sourceAgent.id == targetAgent.id) {
+      return 0;
+    }
+
+    final List<Skill> sourceSkills = await getInstalledSkillsForAgent(sourceAgent);
+    if (sourceSkills.isEmpty) {
       return 0;
     }
 
@@ -138,54 +143,21 @@ class SkillService {
       return 0;
     }
 
-    // 收集默认 Agent 所有发现根目录下含 SKILL.md 的一级子目录
-    final List<Directory> skillDirs = <Directory>[];
-    final Set<String> permissionDeniedPaths = <String>{};
-
-    for (final String home in homes) {
-      final List<String> roots =
-          _getRootsForAgent(defaultAgent, home);
-      for (final String root in roots) {
-        final Directory rootDir = Directory(root);
-        if (!await rootDir.exists()) {
-          continue;
-        }
-        final List<Directory> subs = await _listDirsSafe(
-          rootDir,
-          permissionDeniedPaths: permissionDeniedPaths,
-        );
-        for (final Directory sub in subs) {
-          final String basename = _baseName(sub.path);
-          // 忽略隐藏目录
-          if (basename.isEmpty || basename.startsWith('.')) {
-            continue;
-          }
-          // 只有包含 SKILL.md 的子目录才视为有效 Skill
-          if (!await _hasSkillMd(
-            sub,
-            permissionDeniedPaths: permissionDeniedPaths,
-          )) {
-            continue;
-          }
-          skillDirs.add(Directory(sub.absolute.path));
-        }
-      }
-    }
-
-    if (skillDirs.isEmpty) {
-      return 0;
-    }
-
     // 确定目标 Agent 的首选存放目录（取第一个 home 的第一个 root）
-    final String targetRoot =
-        _primaryDiscoveryRoot(targetAgent, homes.first);
+    final String targetRoot = _primaryDiscoveryRoot(targetAgent, homes.first);
     final Directory targetRootDir = Directory(targetRoot);
     if (!await targetRootDir.exists()) {
       throw Exception('目标 Skill 目录不存在：$targetRoot\n请先确认该 Agent 是否已正确安装。');
     }
 
     int syncedCount = 0;
-    for (final Directory srcDir in skillDirs) {
+    for (final Skill skill in sourceSkills) {
+      final String? path = skill.installedPath;
+      if (path == null || path.isEmpty) continue;
+
+      final Directory srcDir = Directory(path);
+      if (!await srcDir.exists()) continue;
+
       final String skillName = _baseName(srcDir.path);
       final Directory destDir = Directory('${targetRootDir.path}/$skillName');
 
@@ -200,6 +172,43 @@ class SkillService {
     }
 
     return syncedCount;
+  }
+
+  /// 将指定的 [skill] **物理复制**到目标 Agent（[targetAgent]）的首选目录。
+  Future<void> syncSingleSkill({
+    required Skill skill,
+    required AgentTarget targetAgent,
+  }) async {
+    if (skill.agentId == targetAgent.id) return;
+
+    final String? path = skill.installedPath;
+    if (path == null || path.isEmpty) {
+      throw Exception('Skill「${skill.name}」没有有效的安装路径，无法同步');
+    }
+
+    final Directory srcDir = Directory(path);
+    if (!await srcDir.exists()) {
+      throw Exception('Skill「${skill.name}」目录不存在，无法同步');
+    }
+
+    final List<String> homes = _homeCandidates();
+    if (homes.isEmpty) {
+      throw Exception('无法获取 HOME 目录');
+    }
+
+    final String targetRoot = _primaryDiscoveryRoot(targetAgent, homes.first);
+    final Directory targetRootDir = Directory(targetRoot);
+    if (!await targetRootDir.exists()) {
+      throw Exception('目标 Skill 目录不存在：$targetRoot\n请先确认该 Agent 是否已正确安装。');
+    }
+
+    final String skillName = _baseName(srcDir.path);
+    final Directory destDir = Directory('${targetRootDir.path}/$skillName');
+
+    if (await destDir.exists()) {
+      await destDir.delete(recursive: true);
+    }
+    await _copySkillDir(srcDir, destDir);
   }
 
   /// 从 zip 文件解压并安装 Skill 到 Agent 的首选发现根目录。
@@ -413,19 +422,7 @@ class SkillService {
     return discovered;
   }
 
-  /// 检测 [dir] 目录下是否存在名为 `SKILL.md` 的文件（文件名大小写不敏感）。
-  Future<bool> _hasSkillMd(
-    Directory dir, {
-    required Set<String> permissionDeniedPaths,
-  }) async {
-    final List<File> files = await _listFilesSafe(
-      dir,
-      permissionDeniedPaths: permissionDeniedPaths,
-    );
-    return files.any(
-      (File f) => _baseName(f.path).toLowerCase() == 'skill.md',
-    );
-  }
+
 
   /// 返回可能的 HOME 目录候选列表（通过环境变量推断）。
   List<String> _homeCandidates() {

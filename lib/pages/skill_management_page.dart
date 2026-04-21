@@ -123,13 +123,11 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                 ),
               ),
               const SizedBox(width: 8),
-              // 仅在当前 Agent 不是默认 Agent 且存在默认 Agent 时，显示同步按钮
-              if (widget.defaultAgent != null &&
-                  widget.defaultAgent!.id != widget.selectedAgent.id) ...<Widget>[
+              if (widget.agents.length > 1) ...<Widget>[
                 IconButton(
-                  tooltip: '${l10n.syncFromDefault}（${widget.defaultAgent!.displayName}）',
+                  tooltip: l10n.syncAllTo,
                   iconSize: 18,
-                  onPressed: () => _onSyncFromDefault(l10n),
+                  onPressed: () => _onSyncAll(l10n),
                   icon: const Icon(Icons.sync_alt_outlined),
                 ),
                 const SizedBox(width: 4),
@@ -254,6 +252,14 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                             trailing: Wrap(
                               spacing: 4,
                               children: <Widget>[
+                                if (widget.agents.length > 1)
+                                  IconButton(
+                                    tooltip: l10n.syncTo,
+                                    iconSize: 20,
+                                    onPressed: () => _onSyncSingle(skill, l10n),
+                                    icon: const Icon(Icons.sync_alt_outlined),
+                                    color: color.onSurfaceVariant,
+                                  ),
                                 IconButton(
                                   tooltip: l10n.view,
                                   iconSize: 20,
@@ -280,25 +286,69 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     );
   }
 
-  /// 从默认 Agent 同步 Skill 到当前 Agent（单向，不可反向同步）
-  Future<void> _onSyncFromDefault(AppLocalizations l10n) async {
-    final AgentTarget? defaultAgent = widget.defaultAgent;
-    if (defaultAgent == null || defaultAgent.id == widget.selectedAgent.id) {
+  Future<AgentTarget?> _selectTargetAgent() async {
+    final AppLocalizations l10n = AppLocalizations.of(context)!;
+    final List<AgentTarget> availableAgents = widget.agents
+        .where((AgentTarget a) => a.id != widget.selectedAgent.id)
+        .toList();
+    if (availableAgents.isEmpty) {
+      SnackbarUtil.show(context, '没有其他可用的 Agent');
+      return null;
+    }
+
+    return showDialog<AgentTarget>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(l10n.selectTargetAgent),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: availableAgents.length,
+              itemBuilder: (BuildContext context, int index) {
+                final AgentTarget target = availableAgents[index];
+                return ListTile(
+                  leading: Icon(getAgentIcon(target.icon)),
+                  title: Text(target.displayName),
+                  onTap: () => Navigator.pop(context, target),
+                );
+              },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.cancel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 将当前 Agent 的所有 Skill 同步到指定的其他 Agent
+  Future<void> _onSyncAll(AppLocalizations l10n) async {
+    if (_skills.isEmpty) {
+      SnackbarUtil.show(context, '当前 Agent 没有可同步的 Skill');
       return;
     }
+
+    final AgentTarget? targetAgent = await _selectTargetAgent();
+    if (targetAgent == null) return;
+
     try {
-      final int count = await _skillService.syncSkillsFromDefaultAgent(
-        defaultAgent: defaultAgent,
-        targetAgent: widget.selectedAgent,
+      final int count = await _skillService.syncAllSkills(
+        sourceAgent: widget.selectedAgent,
+        targetAgent: targetAgent,
       );
-      await _loadSkills();
       if (!mounted) {
         return;
       }
       SnackbarUtil.show(
         context,
         count > 0
-            ? '已从 ${defaultAgent.displayName} 同步 $count 个 Skill'
+            ? '已同步 $count 个 Skill 到 ${targetAgent.displayName}'
             : '无需同步，所有 Skill 已是最新',
       );
     } catch (err) {
@@ -311,6 +361,29 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
         '同步失败：$errMsg',
         isSuccess: false,
       );
+    }
+  }
+
+  /// 将单个 Skill 同步到指定的其他 Agent
+  Future<void> _onSyncSingle(Skill skill, AppLocalizations l10n) async {
+    final AgentTarget? targetAgent = await _selectTargetAgent();
+    if (targetAgent == null) return;
+
+    try {
+      await _skillService.syncSingleSkill(
+        skill: skill,
+        targetAgent: targetAgent,
+      );
+      if (!mounted) {
+        return;
+      }
+      SnackbarUtil.show(context, '已将 ${skill.name} 同步到 ${targetAgent.displayName}');
+    } catch (err) {
+      if (!mounted) {
+        return;
+      }
+      final String errMsg = err.toString().replaceFirst('Exception: ', '');
+      SnackbarUtil.show(context, '同步失败：$errMsg', isSuccess: false);
     }
   }
 
@@ -533,21 +606,25 @@ class _InlineAgentFilterBar extends StatelessWidget {
   }
 
   IconData _agentIcon(String value) {
-    switch (value) {
-      case 'cursor':
-        return Icons.ads_click_outlined;
-      case 'bolt':
-        return Icons.bolt_outlined;
-      case 'terminal':
-        return Icons.terminal;
-      case 'sparkles':
-        return Icons.auto_awesome_outlined;
-      case 'gravity':
-      case 'antigravity':
-        return Icons.rocket_launch_outlined;
-      default:
-        return Icons.smart_toy_outlined;
-    }
+    return getAgentIcon(value);
+  }
+}
+
+IconData getAgentIcon(String value) {
+  switch (value) {
+    case 'cursor':
+      return Icons.ads_click_outlined;
+    case 'bolt':
+      return Icons.bolt_outlined;
+    case 'terminal':
+      return Icons.terminal;
+    case 'sparkles':
+      return Icons.auto_awesome_outlined;
+    case 'gravity':
+    case 'antigravity':
+      return Icons.rocket_launch_outlined;
+    default:
+      return Icons.smart_toy_outlined;
   }
 }
 

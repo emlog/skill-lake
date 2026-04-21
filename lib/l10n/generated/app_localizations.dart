@@ -236,6 +236,24 @@ abstract class AppLocalizations {
   /// **'Sync from Default'**
   String get syncFromDefault;
 
+  /// No description provided for @syncAllTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync All to...'**
+  String get syncAllTo;
+
+  /// No description provided for @syncTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync to...'**
+  String get syncTo;
+
+  /// No description provided for @selectTargetAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Select target Agent to sync to'**
+  String get selectTargetAgent;
+
   /// No description provided for @uploadInstall.
   ///
   /// In en, this message translates to:
