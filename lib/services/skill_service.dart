@@ -513,11 +513,11 @@ class SkillService {
       // Gemini CLI 官方 skills 目录
       'gemini_cli': isWin
           ? <String>[
-              '$home\\.agents\\skills',
+              '$home\\.gemini\\skills',
               if (appData != null) '$appData\\Gemini\\skills',
             ]
           : <String>[
-              '$home/.agents/skills',
+              '$home/.gemini/skills',
             ],
       // Antigravity 官方 skills 目录
       'antigravity': isWin

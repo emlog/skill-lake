@@ -463,10 +463,15 @@ class _SkillStorePageState extends State<SkillStorePage> {
       'trae': isWin
           ? (appData != null ? '$appData\\Trae\\skills' : '$home\\.trae\\skills')
           : '$home/.trae/skills',
-      'gemini_cli': isWin ? '$home\\.agents\\skills' : '$home/.agents/skills',      'antigravity': isWin
+      'gemini_cli': isWin 
+          ? '$home\\.gemini\\skills' 
+          : '$home/.gemini/skills',      
+      'antigravity': isWin
           ? (appData != null ? '$appData\\Antigravity\\skills' : '$home\\.gemini\\antigravity\\skills')
           : '$home/.gemini/antigravity/skills',
-      'github_copilot': isWin ? '$home\\.copilot\\skills' : '$home/.copilot/skills',
+      'github_copilot': isWin 
+          ? '$home\\.copilot\\skills' 
+          : '$home/.copilot/skills',
     };
 
     final String root = primaryRoots[agent.id] ?? '${home}${Platform.pathSeparator}.skill_lake${Platform.pathSeparator}${agent.id}${Platform.pathSeparator}skills';

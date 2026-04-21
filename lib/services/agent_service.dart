@@ -145,7 +145,7 @@ class AgentService {
           displayName: 'Gemini CLI',
           icon: 'terminal',
           homepageUrl: 'https://geminicli.com/',
-          skillsDirectory: '~/.agents/skills/',
+          skillsDirectory: '~/.gemini/skills/',
         ),
         AgentTarget(
           id: 'antigravity', 
