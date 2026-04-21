@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:yaml/yaml.dart';
 
 import '../models/agent_target.dart';
 import '../models/skill.dart';
@@ -382,13 +383,30 @@ class SkillService {
 
         String description = '';
         try {
-          // Read up to 8KB to avoid loading huge files into memory for frontmatter
-          // But readAsString is simpler, SKILL.md is usually tiny.
           final String content = await skillMd.readAsString();
-          final RegExp descExp = RegExp(r'^description:\s*(.+)$', multiLine: true);
-          final RegExpMatch? match = descExp.firstMatch(content);
+          
+          // Try to extract YAML frontmatter
+          String yamlContent = content;
+          final RegExp frontmatterExp = RegExp(r'^---\s*\n(.*?)\n---', multiLine: true, dotAll: true);
+          final RegExpMatch? match = frontmatterExp.firstMatch(content);
           if (match != null) {
-            description = match.group(1)?.trim() ?? '';
+            yamlContent = match.group(1) ?? '';
+          }
+
+          try {
+            final dynamic parsedYaml = loadYaml(yamlContent);
+            if (parsedYaml is YamlMap && parsedYaml.containsKey('description')) {
+              description = parsedYaml['description']?.toString().trim() ?? '';
+            }
+          } catch (_) {}
+
+          // Fallback if YAML parsing fails or no description is found
+          if (description.isEmpty || description == '|' || description == '|-') {
+            final RegExp descExp = RegExp(r'^description:\s*(.+)$', multiLine: true);
+            final RegExpMatch? fallbackMatch = descExp.firstMatch(content);
+            if (fallbackMatch != null) {
+              description = fallbackMatch.group(1)?.trim() ?? '';
+            }
           }
         } catch (_) {}
 
