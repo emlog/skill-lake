@@ -239,9 +239,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                               child: Text(
                                 skill.description.trim().isEmpty
                                     ? '暂无描述'
-                                    : skill.description,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                                    : skill.description.replaceAll(r'\n', '\n'),
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: color.onSurfaceVariant,
                                       height: 1.4,
@@ -753,7 +751,7 @@ class _SkillDetailRow extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           SelectableText(
-            value.trim().isEmpty ? '无' : value.trim(),
+            value.trim().isEmpty ? '无' : value.trim().replaceAll(r'\n', '\n'),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],

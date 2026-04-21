@@ -607,10 +607,8 @@ class _StoreSkillCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme color = Theme.of(context).colorScheme;
 
-    // 截断过长的描述
-    final String desc = item.skill.description.length > 120
-        ? '${item.skill.description.substring(0, 120)}…'
-        : item.skill.description;
+    // 替换换行符，以便兼容换行
+    final String desc = item.skill.description.replaceAll(r'\n', '\n');
 
     return Card(
       child: InkWell(
@@ -681,8 +679,6 @@ class _StoreSkillCard extends StatelessWidget {
                             color: color.onSurfaceVariant,
                             height: 1.4,
                           ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -774,7 +770,7 @@ class _DetailRow extends StatelessWidget {
           Text(label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 4),
           SelectableText(
-            value.trim().isEmpty ? '无' : value.trim(),
+            value.trim().isEmpty ? '无' : value.trim().replaceAll(r'\n', '\n'),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
