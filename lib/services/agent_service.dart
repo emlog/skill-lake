@@ -57,6 +57,8 @@ class AgentService {
         if (index != -1) {
           final AgentTarget existing = agents[index];
           agents[index] = existing.copyWith(
+            displayName: builtIn.displayName,
+            icon: builtIn.icon,
             homepageUrl: builtIn.homepageUrl ?? existing.homepageUrl,
             skillsDirectory: builtIn.skillsDirectory ?? existing.skillsDirectory,
           );
@@ -143,7 +145,7 @@ class AgentService {
           displayName: 'Gemini CLI',
           icon: 'terminal',
           homepageUrl: 'https://geminicli.com/',
-          skillsDirectory: '~/.gemini/skills/',
+          skillsDirectory: '~/.agents/skills/',
         ),
         AgentTarget(
           id: 'antigravity', 
@@ -158,6 +160,13 @@ class AgentService {
           icon: 'github',
           homepageUrl: 'https://github.com/features/copilot',
           skillsDirectory: '~/.copilot/skills/',
+        ),
+        AgentTarget(
+          id: 'general',
+          displayName: 'General Agent',
+          icon: 'robot_2',
+          isDefault: false,
+          skillsDirectory: '~/.agents/skills/',
         ),
       ];
 }

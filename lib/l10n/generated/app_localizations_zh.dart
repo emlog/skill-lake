@@ -18,7 +18,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get menuAgent => 'Agent';
 
   @override
-  String get menuStore => '商店';
+  String get menuStore => 'Store';
 
   @override
   String get about => '关于';
@@ -90,6 +90,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String totalCount(int count) {
     return '总数 $count';
   }
+
+  @override
+  String get deleteAll => '全部删除';
+
+  @override
+  String get confirmDeleteAll => '确认全部删除';
+
+  @override
+  String get confirmDeleteAllContent => '确定要删除该 Agent 下的所有 Skill 吗？\n此操作将不可恢复。';
 
   @override
   String get confirmDelete => '确认删除';

@@ -3,7 +3,7 @@
   "appTitle": "Skill Lake",
   "menuSkill": "Skill",
   "menuAgent": "Agent",
-  "menuStore": "商店",
+  "menuStore": "Store",
   "about": "关于",
   "author": "作者",
   "homepage": "主页",
@@ -34,6 +34,9 @@
       }
     }
   },
+  "deleteAll": "全部删除",
+  "confirmDeleteAll": "确认全部删除",
+  "confirmDeleteAllContent": "确定要删除该 Agent 下的所有 Skill 吗？\n此操作将不可恢复。",
   "confirmDelete": "确认删除",
   "confirmDeleteContent": "确定要删除 {name} 吗？\n此操作将不可恢复。",
   "@confirmDeleteContent": {

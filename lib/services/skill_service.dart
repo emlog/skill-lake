@@ -103,6 +103,18 @@ class SkillService {
     }
   }
 
+  /// 删除指定 Agent 的所有 Skill
+  Future<void> deleteAllSkillsForAgent(AgentTarget agent) async {
+    final List<Skill> skills = await getInstalledSkillsForAgent(agent);
+    for (final Skill skill in skills) {
+      try {
+        await deleteSkill(skill);
+      } catch (e) {
+        // 忽略删除单个 Skill 时的异常，继续处理其他 Skill
+      }
+    }
+  }
+
   /// 将默认 Agent（[defaultAgentId]）的所有 Skill 文件夹**物理复制**到目标 Agent（[targetAgentId]）的首选目录。
   ///
   /// 同步规则：
@@ -501,11 +513,11 @@ class SkillService {
       // Gemini CLI 官方 skills 目录
       'gemini_cli': isWin
           ? <String>[
-              '$home\\.gemini\\skills',
+              '$home\\.agents\\skills',
               if (appData != null) '$appData\\Gemini\\skills',
             ]
           : <String>[
-              '$home/.gemini/skills',
+              '$home/.agents/skills',
             ],
       // Antigravity 官方 skills 目录
       'antigravity': isWin

@@ -93,6 +93,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get deleteAll => 'Delete All';
+
+  @override
+  String get confirmDeleteAll => 'Confirm Delete All';
+
+  @override
+  String get confirmDeleteAllContent =>
+      'Are you sure you want to delete all Skills for this Agent?\nThis action cannot be undone.';
+
+  @override
   String get confirmDelete => 'Confirm Delete';
 
   @override

@@ -260,6 +260,24 @@ abstract class AppLocalizations {
   /// **'Total {count}'**
   String totalCount(int count);
 
+  /// No description provided for @deleteAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete All'**
+  String get deleteAll;
+
+  /// No description provided for @confirmDeleteAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Delete All'**
+  String get confirmDeleteAll;
+
+  /// No description provided for @confirmDeleteAllContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete all Skills for this Agent?\nThis action cannot be undone.'**
+  String get confirmDeleteAllContent;
+
   /// No description provided for @confirmDelete.
   ///
   /// In en, this message translates to:

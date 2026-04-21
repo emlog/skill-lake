@@ -148,6 +148,13 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                 icon: const Icon(Icons.refresh),
               ),
               const SizedBox(width: 4),
+              IconButton(
+                tooltip: l10n.deleteAll,
+                iconSize: 18,
+                onPressed: _skills.isEmpty ? null : () => _onDeleteAllSkills(l10n),
+                icon: Icon(Icons.delete_sweep, color: _skills.isEmpty ? Theme.of(context).disabledColor : Theme.of(context).colorScheme.error),
+              ),
+              const SizedBox(width: 4),
             ],
           ),
         ),
@@ -330,6 +337,49 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       }
       final String errMsg = err.toString().replaceFirst('Exception: ', '');
       SnackbarUtil.show(context, '上传安装失败：$errMsg', isSuccess: false);
+    }
+  }
+
+  /// 全部删除当前 Agent 下的所有 Skill
+  Future<void> _onDeleteAllSkills(AppLocalizations l10n) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(l10n.confirmDeleteAll),
+          content: Text(l10n.confirmDeleteAllContent),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              child: Text(l10n.deleteAll),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm != true) return;
+
+    try {
+      await _skillService.deleteAllSkillsForAgent(widget.selectedAgent);
+      await _loadSkills();
+      if (!mounted) {
+        return;
+      }
+      SnackbarUtil.show(context, '已删除所有 Skill');
+    } catch (err) {
+      if (!mounted) {
+        return;
+      }
+      final String errMsg = err.toString().replaceFirst('Exception: ', '');
+      SnackbarUtil.show(context, '删除失败：$errMsg', isSuccess: false);
     }
   }
 
