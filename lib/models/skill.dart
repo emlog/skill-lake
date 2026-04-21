@@ -11,6 +11,7 @@ class Skill {
     required this.source,
     this.installedPath,
     this.tags = const [],
+    this.metadata = const {},
   });
 
   final String id;
@@ -22,6 +23,7 @@ class Skill {
   final String source;
   final String? installedPath;
   final List<String> tags;
+  final Map<String, String> metadata;
 
   Skill copyWith({
     String? id,
@@ -33,6 +35,7 @@ class Skill {
     String? source,
     String? installedPath,
     List<String>? tags,
+    Map<String, String>? metadata,
   }) {
     return Skill(
       id: id ?? this.id,
@@ -44,6 +47,7 @@ class Skill {
       source: source ?? this.source,
       installedPath: installedPath ?? this.installedPath,
       tags: tags ?? this.tags,
+      metadata: metadata ?? this.metadata,
     );
   }
 
@@ -58,6 +62,7 @@ class Skill {
       'source': source,
       'installedPath': installedPath,
       'tags': tags,
+      'metadata': metadata,
     };
   }
 
@@ -74,6 +79,7 @@ class Skill {
       tags: ((map['tags'] as List<dynamic>?) ?? const [])
           .map((e) => e.toString())
           .toList(),
+      metadata: Map<String, String>.from(map['metadata'] as Map? ?? {}),
     );
   }
 

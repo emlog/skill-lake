@@ -380,6 +380,24 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get search;
 
+  /// No description provided for @updateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Update ({version})'**
+  String updateAvailable(String version);
+
+  /// No description provided for @updating.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating...'**
+  String get updating;
+
+  /// No description provided for @updateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {name} to the latest version'**
+  String updateSuccess(String name);
+
   /// No description provided for @searchHint.
   ///
   /// In en, this message translates to:

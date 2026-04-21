@@ -36,6 +36,12 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
   List<Skill> _skills = <Skill>[];
   bool _loading = true;
 
+  /// 存储各个 Skill 的更新版本号，null 表示无更新或尚未检查
+  final Map<String, String?> _updateVersions = <String, String?>{};
+
+  /// 存储正在更新中的 skill id
+  final Set<String> _updatingIds = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +60,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     if (mounted) {
       setState(() {
         _loading = true;
+        _updateVersions.clear();
       });
     }
     try {
@@ -66,6 +73,8 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
         _skills = all;
         _loading = false;
       });
+      // 异步检查更新
+      _checkUpdates(all);
     } on SkillPermissionException catch (err) {
       if (!mounted) {
         return;
@@ -96,6 +105,55 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
         isSuccess: false,
       );
     }
+  }
+
+  Future<void> _checkUpdates(List<Skill> skills) async {
+    for (final Skill skill in skills) {
+      final String? remoteVersion = await _skillService.checkForUpdate(skill);
+      if (remoteVersion != null && mounted) {
+        setState(() {
+          _updateVersions[skill.id] = remoteVersion;
+        });
+      }
+    }
+  }
+
+  Future<void> _onUpdate(Skill skill, AppLocalizations l10n) async {
+    setState(() {
+      _updatingIds.add(skill.id);
+    });
+    try {
+      await _skillService.updateSkill(skill, widget.selectedAgent);
+      if (!mounted) return;
+      SnackbarUtil.show(context, l10n.updateSuccess(skill.name));
+      await _loadSkills();
+    } catch (err) {
+      if (!mounted) return;
+      final String errMsg = err.toString().replaceFirst('Exception: ', '');
+      SnackbarUtil.show(context, '更新失败：$errMsg', isSuccess: false);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingIds.remove(skill.id);
+        });
+      }
+    }
+  }
+
+  String _formatVersion(String version) {
+    if (version.isEmpty || version == 'local') return '';
+    String v = version.trim();
+    // 处理 version: xxx 或 v: xxx 格式，提取后面的内容
+    final RegExp prefixExp =
+        RegExp(r'^(version|v)[:：\s]\s*', caseSensitive: false);
+    v = v.replaceFirst(prefixExp, '');
+    // 处理 v1.0.0 这种没有冒号的格式
+    if (v.toLowerCase().startsWith('v') &&
+        v.length > 1 &&
+        RegExp(r'[0-9]').hasMatch(v[1])) {
+      v = v.substring(1);
+    }
+    return 'v: $v';
   }
 
   @override
@@ -149,8 +207,12 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
               IconButton(
                 tooltip: l10n.deleteAll,
                 iconSize: 18,
-                onPressed: _skills.isEmpty ? null : () => _onDeleteAllSkills(l10n),
-                icon: Icon(Icons.delete_sweep, color: _skills.isEmpty ? Theme.of(context).disabledColor : Theme.of(context).colorScheme.error),
+                onPressed:
+                    _skills.isEmpty ? null : () => _onDeleteAllSkills(l10n),
+                icon: Icon(Icons.delete_sweep,
+                    color: _skills.isEmpty
+                        ? Theme.of(context).disabledColor
+                        : Theme.of(context).colorScheme.error),
               ),
               const SizedBox(width: 4),
             ],
@@ -185,6 +247,9 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                           );
                         }
                         final Skill skill = _skills[index];
+                        final String? remoteVersion = _updateVersions[skill.id];
+                        final bool isUpdating = _updatingIds.contains(skill.id);
+
                         // 有 installedPath 即可删除（不区分 auto/sync/upload）
                         final bool canDelete =
                             skill.installedPath?.isNotEmpty == true;
@@ -194,7 +259,11 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                             side: BorderSide(
-                              color: color.outlineVariant.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.4),
+                              color: color.outlineVariant.withValues(
+                                  alpha: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? 0.2
+                                      : 0.4),
                               width: 0.5,
                             ),
                           ),
@@ -207,30 +276,58 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : color.surfaceContainerHighest,
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white10
+                                    : color.surfaceContainerHighest,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
                                 Icons.extension_outlined,
                                 size: 18,
-                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : color.onSurfaceVariant,
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white70
+                                    : color.onSurfaceVariant,
                               ),
                             ),
                             title: GestureDetector(
                               onTap: () => _onView(skill, l10n),
                               child: MouseRegion(
                                 cursor: SystemMouseCursors.click,
-                                child: Text(
-                                  skill.version == 'local' || skill.version.isEmpty
-                                      ? skill.name
-                                      : '${skill.name} (${skill.version})',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                    color: color.onSurface,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: color.onSurfaceVariant.withValues(alpha: 0.5),
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      skill.name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15,
+                                        color: color.onSurface,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: color.onSurfaceVariant
+                                            .withValues(alpha: 0.5),
+                                      ),
+                                    ),
+                                    if (skill.version != 'local' &&
+                                        skill.version.isNotEmpty)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(top: 2.0),
+                                        child: Text(
+                                          _formatVersion(skill.version),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                color: color.onSurfaceVariant
+                                                    .withValues(alpha: 0.7),
+                                                fontSize: 10,
+                                              ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -240,7 +337,10 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                                 skill.description.trim().isEmpty
                                     ? '暂无描述'
                                     : skill.description.replaceAll(r'\n', '\n'),
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
                                       color: color.onSurfaceVariant,
                                       height: 1.4,
                                     ),
@@ -249,7 +349,33 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                             isThreeLine: true,
                             trailing: Wrap(
                               spacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: <Widget>[
+                                if (remoteVersion != null)
+                                  isUpdating
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        )
+                                      : TextButton.icon(
+                                          onPressed: () =>
+                                              _onUpdate(skill, l10n),
+                                          icon: const Icon(
+                                              Icons.system_update_alt_outlined,
+                                              size: 16),
+                                          label: Text(
+                                              l10n.updateAvailable(
+                                                  remoteVersion),
+                                              style: const TextStyle(
+                                                  fontSize: 12)),
+                                          style: TextButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8),
+                                            foregroundColor: color.primary,
+                                          ),
+                                        ),
                                 if (widget.agents.length > 1)
                                   IconButton(
                                     tooltip: l10n.syncTo,
@@ -268,8 +394,9 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                                 IconButton(
                                   tooltip: l10n.delete,
                                   iconSize: 20,
-                                  onPressed:
-                                      canDelete ? () => _onDelete(skill, l10n) : null,
+                                  onPressed: canDelete
+                                      ? () => _onDelete(skill, l10n)
+                                      : null,
                                   icon: const Icon(Icons.delete_outline),
                                   color: color.onSurfaceVariant,
                                 ),
@@ -375,7 +502,8 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       if (!mounted) {
         return;
       }
-      SnackbarUtil.show(context, '已将 ${skill.name} 同步到 ${targetAgent.displayName}');
+      SnackbarUtil.show(
+          context, '已将 ${skill.name} 同步到 ${targetAgent.displayName}');
     } catch (err) {
       if (!mounted) {
         return;
@@ -499,7 +627,8 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
   Future<void> _onView(Skill skill, AppLocalizations l10n) async {
     await showDialog<void>(
       context: context,
-      builder: (BuildContext context) => _SkillDetailDialog(skill: skill, l10n: l10n),
+      builder: (BuildContext context) =>
+          _SkillDetailDialog(skill: skill, l10n: l10n),
     );
   }
 }
@@ -551,7 +680,8 @@ class _InlineAgentFilterBar extends StatelessWidget {
         itemBuilder: (BuildContext context, int displayIndex) {
           final AgentTarget agent = displayAgents[displayIndex];
           final int originalIndex = agents.indexOf(agent);
-          final bool isDefault = defaultAgent != null && defaultAgent!.id == agent.id;
+          final bool isDefault =
+              defaultAgent != null && defaultAgent!.id == agent.id;
           final bool selected = originalIndex == selectedIndex;
           return Padding(
             padding: const EdgeInsets.only(right: 4),
@@ -559,11 +689,13 @@ class _InlineAgentFilterBar extends StatelessWidget {
               selected: selected,
               onSelected: (_) => onChanged(originalIndex),
               showCheckmark: false,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6)),
               side: BorderSide.none,
               backgroundColor: Colors.transparent,
               selectedColor: Theme.of(context).colorScheme.surfaceContainerHigh,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              labelPadding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               label: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
@@ -576,7 +708,11 @@ class _InlineAgentFilterBar extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                        border: Border.all(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outlineVariant
+                                .withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -593,9 +729,15 @@ class _InlineAgentFilterBar extends StatelessWidget {
               labelStyle: TextStyle(
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                color: selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant,
+                color: selected
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              avatar: Icon(_agentIcon(agent.icon), size: 14, color: selected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurfaceVariant),
+              avatar: Icon(_agentIcon(agent.icon),
+                  size: 14,
+                  color: selected
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           );
         },
@@ -700,7 +842,8 @@ class _SkillDetailDialog extends StatelessWidget {
                 ),
                 child: FutureBuilder<String>(
                   future: _loadSkillMd(),
-                  builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+                  builder:
+                      (BuildContext context, AsyncSnapshot<String> snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }

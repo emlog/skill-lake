@@ -158,6 +158,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get search => 'Search';
 
   @override
+  String updateAvailable(String version) {
+    return 'Update ($version)';
+  }
+
+  @override
+  String get updating => 'Updating...';
+
+  @override
+  String updateSuccess(String name) {
+    return 'Updated $name to the latest version';
+  }
+
+  @override
   String get searchHint =>
       'Semantic search, e.g.: SKILL for front-end development';
 

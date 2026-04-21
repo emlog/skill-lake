@@ -156,6 +156,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get search => '搜索';
 
   @override
+  String updateAvailable(String version) {
+    return '更新 ($version)';
+  }
+
+  @override
+  String get updating => '更新中...';
+
+  @override
+  String updateSuccess(String name) {
+    return '已更新 $name 至最新版本';
+  }
+
+  @override
   String get searchHint => '支持语义搜索，例如：最适合前端开发的SKILL';
 
   @override

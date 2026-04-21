@@ -1,13 +1,10 @@
-import 'dart:io';
-
-import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/generated/app_localizations.dart';
 
 import '../models/agent_target.dart';
 import '../services/settings_service.dart';
+import '../services/skill_service.dart';
 import '../services/store_service.dart';
 import '../utils/snackbar_util.dart';
 
@@ -159,7 +156,8 @@ class _SkillStorePageState extends State<SkillStorePage> {
 
   Widget _buildSkillsmpLayout(AppLocalizations l10n) {
     // 当没搜索过或结果为空，并且不在加载和报错状态时为“空列表状态”，居中显示搜索组件
-    final bool isEmptyState = (!_hasSearched || _items.isEmpty) && !_loading && _errorMessage == null;
+    final bool isEmptyState =
+        (!_hasSearched || _items.isEmpty) && !_loading && _errorMessage == null;
 
     final Widget searchHeader = _SkillsmpSearchHeader(
       settingsService: _settingsService,
@@ -206,9 +204,12 @@ class _SkillStorePageState extends State<SkillStorePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Icon(
-                    Icons.travel_explore, 
-                    size: 64, 
-                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                    Icons.travel_explore,
+                    size: 64,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 24),
                   searchHeader,
@@ -217,8 +218,9 @@ class _SkillStorePageState extends State<SkillStorePage> {
                     Text(
                       l10n.noMatchSkill,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                     ),
                   ],
                   const SizedBox(height: 100), // 微调视觉重心
@@ -328,6 +330,8 @@ class _SkillStorePageState extends State<SkillStorePage> {
     );
   }
 
+  final SkillService _skillService = SkillService();
+
   /// 执行安装操作
   Future<void> _onInstall(StoreSkillItem item) async {
     final AgentTarget target = _installTarget;
@@ -335,7 +339,16 @@ class _SkillStorePageState extends State<SkillStorePage> {
       _installingIds.add(item.skill.id);
     });
     try {
-      await _installSkillFromGitHub(item, agent: target);
+      await _skillService.installFromGitHub(
+        repoZipUrl: item.repoZipUrl,
+        owner: item.source.owner,
+        repo: item.source.repo,
+        branch: item.source.branch,
+        skillsPath: item.source.skillsPath,
+        skillDirName: item.skillDirName,
+        metadata: item.skill,
+        agent: target,
+      );
       if (!mounted) {
         return;
       }
@@ -366,128 +379,12 @@ class _SkillStorePageState extends State<SkillStorePage> {
     }
   }
 
-  /// 从 GitHub 下载指定 skill 目录并安装到 Agent 的 skills 根目录
-  Future<void> _installSkillFromGitHub(
-    StoreSkillItem item, {
-    required AgentTarget agent,
-  }) async {
-    // 下载仓库 zip
-    final http.Response response = await http.get(
-      Uri.parse(item.repoZipUrl),
-      headers: <String, String>{'Accept': 'application/vnd.github+json'},
-    );
-    if (response.statusCode != 200) {
-      throw Exception('下载失败：HTTP ${response.statusCode}');
-    }
-
-    // 解压 zip
-    final Archive archive = ZipDecoder().decodeBytes(response.bodyBytes);
-
-    // GitHub zipball 的目录结构：<owner>-<repo>-<hash>/skills/<skill-name>/...
-    // 需要找到正确的 skill 子目录前缀
-    final String skillSubPath =
-        '${item.source.skillsPath}/${item.skillDirName}/';
-
-    // 过滤出属于目标 Skill 的文件
-    final List<ArchiveFile> skillFiles = archive
-        .where((ArchiveFile f) => f.name.contains(skillSubPath))
-        .toList();
-
-    if (skillFiles.isEmpty) {
-      throw Exception('在仓库 zip 中未找到 ${item.skillDirName} 目录');
-    }
-
-    // 确定安装目标路径
-    final String targetRoot = await _getInstallRoot(agent);
-    final Directory outputDir =
-        Directory('$targetRoot/${item.skillDirName}');
-
-    // 同名先删除再安装
-    if (await outputDir.exists()) {
-      await outputDir.delete(recursive: true);
-    }
-    await outputDir.create(recursive: true);
-
-    // 解压目标 skill 的文件
-    for (final ArchiveFile file in skillFiles) {
-      // 提取相对路径：去掉 zip 的顶层目录和 skills/<name>/ 前缀
-      final int skillPathStart = file.name.indexOf(skillSubPath);
-      if (skillPathStart == -1) {
-        continue;
-      }
-      final String relativePath =
-          file.name.substring(skillPathStart + skillSubPath.length);
-      if (relativePath.isEmpty) {
-        continue;
-      }
-
-      final String outPath = '${outputDir.path}/$relativePath';
-      if (file.isFile) {
-        final File outFile = File(outPath);
-        await outFile.parent.create(recursive: true);
-        await outFile.writeAsBytes(file.content as List<int>);
-      } else {
-        await Directory(outPath).create(recursive: true);
-      }
-    }
-  }
-
-  /// 获取 Agent 的首选 skills 安装目录
-  Future<String> _getInstallRoot(AgentTarget agent) async {
-    final String? home = Platform.isWindows
-        ? (Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'])
-        : Platform.environment['HOME'];
-    if (home == null || home.isEmpty) {
-      throw Exception('无法获取 HOME 目录');
-    }
-
-    // 优先使用 Agent 自定义的目录设置
-    if (agent.skillsDirectory != null && agent.skillsDirectory!.isNotEmpty) {
-      return agent.skillsDirectory!.replaceAll('~', home);
-    }
-
-    final bool isWin = Platform.isWindows;
-    final String? appData = Platform.environment['APPDATA'];
-
-    // 默认内置 Agent 的目录映射（与 SkillService 一致）
-    final Map<String, String> primaryRoots = <String, String>{
-      'cursor': isWin
-          ? (appData != null ? '$appData\\Cursor\\skills' : '$home\\.cursor\\skills')
-          : '$home/.cursor/skills',
-      'claude_code': isWin
-          ? (appData != null ? '$appData\\Claude\\skills' : '$home\\.claude\\skills')
-          : '$home/.claude/skills',
-      'codex': isWin
-          ? (appData != null ? '$appData\\Codex\\skills' : '$home\\.codex\\skills')
-          : '$home/.codex/skills',
-      'trae': isWin
-          ? (appData != null ? '$appData\\Trae\\skills' : '$home\\.trae\\skills')
-          : '$home/.trae/skills',
-      'gemini_cli': isWin 
-          ? '$home\\.gemini\\skills' 
-          : '$home/.gemini/skills',      
-      'antigravity': isWin
-          ? (appData != null ? '$appData\\Antigravity\\skills' : '$home\\.gemini\\antigravity\\skills')
-          : '$home/.gemini/antigravity/skills',
-      'github_copilot': isWin 
-          ? '$home\\.copilot\\skills' 
-          : '$home/.copilot/skills',
-    };
-
-    final String root = primaryRoots[agent.id] ?? '${home}${Platform.pathSeparator}.skill_lake${Platform.pathSeparator}${agent.id}${Platform.pathSeparator}skills';
-
-    final Directory dir = Directory(root);
-    if (!await dir.exists()) {
-      throw Exception('目标 Skill 目录不存在：$root\n请先确认该 Agent 是否已正确安装。');
-    }
-    return root;
-  }
-
   /// 查看 Skill 详情弹窗
   Future<void> _onViewDetail(StoreSkillItem item, AppLocalizations l10n) async {
     await showDialog<void>(
       context: context,
-      builder: (BuildContext context) => _StoreSkillDetailDialog(item: item, l10n: l10n),
+      builder: (BuildContext context) =>
+          _StoreSkillDetailDialog(item: item, l10n: l10n),
     );
   }
 }
@@ -536,18 +433,21 @@ class _SourceSwitcher extends StatelessWidget {
                 selected: selected,
                 onSelected: (_) => onChanged(index),
                 showCheckmark: false,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6)),
                 side: BorderSide.none,
                 backgroundColor: Colors.transparent,
                 selectedColor: color.surfaceContainerHigh,
-                labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                labelPadding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                 label: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     Icon(
                       Icons.inventory_2_outlined,
                       size: 14,
-                      color: selected ? color.onSurface : color.onSurfaceVariant,
+                      color:
+                          selected ? color.onSurface : color.onSurfaceVariant,
                     ),
                     const SizedBox(width: 6),
                     Text(src.displayName),
@@ -624,13 +524,17 @@ class _StoreSkillCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : color.surfaceContainerHighest,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white10
+                      : color.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   Icons.auto_awesome_outlined,
                   size: 18,
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : color.onSurfaceVariant,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : color.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: 16),
@@ -647,7 +551,9 @@ class _StoreSkillCard extends StatelessWidget {
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w600, color: color.onSurface),
+                                ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: color.onSurface),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -659,7 +565,9 @@ class _StoreSkillCard extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            border: Border.all(color: color.outlineVariant.withValues(alpha: 0.5)),
+                            border: Border.all(
+                                color: color.outlineVariant
+                                    .withValues(alpha: 0.5)),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -667,7 +575,9 @@ class _StoreSkillCard extends StatelessWidget {
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
-                                ?.copyWith(color: color.onSurfaceVariant, fontSize: 10),
+                                ?.copyWith(
+                                    color: color.onSurfaceVariant,
+                                    fontSize: 10),
                           ),
                         ),
                       ],
@@ -698,7 +608,8 @@ class _StoreSkillCard extends StatelessWidget {
                       onPressed: onInstall,
                       tooltip: l10n.install,
                       iconSize: 20,
-                      icon: Icon(Icons.download_rounded, color: color.onSurfaceVariant),
+                      icon: Icon(Icons.download_rounded,
+                          color: color.onSurfaceVariant),
                     ),
             ],
           ),
@@ -853,7 +764,8 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
                     Expanded(
                       child: InkWell(
                         onTap: () async {
-                          final Uri url = Uri.parse('https://skillsmp.com/docs/api');
+                          final Uri url =
+                              Uri.parse('https://skillsmp.com/docs/api');
                           if (await canLaunchUrl(url)) {
                             await launchUrl(url);
                           }
@@ -863,7 +775,8 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.primary,
                             decoration: TextDecoration.underline,
-                            decorationColor: Theme.of(context).colorScheme.primary,
+                            decorationColor:
+                                Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ),
@@ -927,11 +840,13 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
               prefixIcon: Icon(Icons.search, color: color.primary),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: color.outlineVariant.withValues(alpha: 0.5)),
+                borderSide: BorderSide(
+                    color: color.outlineVariant.withValues(alpha: 0.5)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: color.outlineVariant.withValues(alpha: 0.5)),
+                borderSide: BorderSide(
+                    color: color.outlineVariant.withValues(alpha: 0.5)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -942,7 +857,8 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
                   ? const Color(0xFF2C2C2C)
                   : const Color(0xFFF9F9F9),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
             onSubmitted: (_) => _onSearch(),
           ),

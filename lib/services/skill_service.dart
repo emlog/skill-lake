@@ -73,6 +73,7 @@ class SkillService {
     required String zipUrl,
     required Skill metadata,
     required AgentTarget agent,
+    Map<String, String>? extraMetadata,
   }) async {
     final http.Response response = await http.get(Uri.parse(zipUrl));
     if (response.statusCode != 200) {
@@ -83,10 +84,226 @@ class SkillService {
     final File zipFile = File('${tempDir.path}/${metadata.id}.zip');
     await zipFile.writeAsBytes(response.bodyBytes);
 
+    final Map<String, String> fm = {
+      'name': metadata.name,
+      'version': metadata.version,
+      'description': metadata.description,
+      'author': metadata.author,
+      'source': metadata.source,
+    };
+    if (extraMetadata != null) {
+      fm.addAll(extraMetadata);
+    }
+
     return _installFromZip(
       zipFile,
       agent: agent,
       preferredName: metadata.id,
+      metadata: fm,
+    );
+  }
+
+  /// 检查 Skill 是否有更新。
+  /// 返回远程版本号，如果没有更新则返回 null。
+  Future<String?> checkForUpdate(Skill skill) async {
+    final Map<String, String> fm = skill.metadata;
+    final String? owner = fm['github_owner'];
+    final String? repo = fm['github_repo'];
+    final String? branch = fm['github_branch'];
+    final String? skillsPath = fm['github_skills_path'];
+    final String? skillDir = fm['github_skill_dir'];
+
+    if (owner == null || repo == null || skillDir == null) {
+      return null;
+    }
+
+    final String b = branch ?? 'main';
+    final String sp = skillsPath ?? 'skills';
+    final String url =
+        'https://raw.githubusercontent.com/$owner/$repo/$b/$sp/$skillDir/SKILL.md';
+
+    try {
+      final http.Response response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        return null;
+      }
+      final Map<String, String> remoteFm = _parseYamlFrontmatter(response.body);
+      final String? remoteVersion = remoteFm['version'] ?? remoteFm['v'];
+      if (remoteVersion != null && remoteVersion != skill.version) {
+        return remoteVersion;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  /// 更新 Skill。
+  Future<Skill> updateSkill(Skill skill, AgentTarget agent) async {
+    final Map<String, String> fm = skill.metadata;
+    final String? owner = fm['github_owner'];
+    final String? repo = fm['github_repo'];
+    final String? branch = fm['github_branch'];
+    final String? skillsPath = fm['github_skills_path'];
+    final String? skillDir = fm['github_skill_dir'];
+
+    if (owner == null || repo == null || skillDir == null) {
+      throw Exception('Skill 缺少更新所需的源信息');
+    }
+
+    final String b = branch ?? 'main';
+    final String repoZipUrl =
+        'https://api.github.com/repos/$owner/$repo/zipball/$b';
+
+    // 重新下载并安装
+    // 获取最新的 metadata (从远程 SKILL.md 解析)
+    final String sp = skillsPath ?? 'skills';
+    final String mdUrl =
+        'https://raw.githubusercontent.com/$owner/$repo/$b/$sp/$skillDir/SKILL.md';
+    final http.Response mdResponse = await http.get(Uri.parse(mdUrl));
+    if (mdResponse.statusCode != 200) {
+      throw Exception('无法获取远程元数据');
+    }
+    final Map<String, String> remoteFm = _parseYamlFrontmatter(mdResponse.body);
+
+    final Skill metadata = Skill(
+      id: skill.id,
+      agentId: agent.id,
+      name: remoteFm['name'] ?? skill.name,
+      version: remoteFm['version'] ?? remoteFm['v'] ?? 'latest',
+      description: remoteFm['description'] ?? skill.description,
+      author: remoteFm['author'] ?? skill.author,
+      source: remoteFm['source'] ?? skill.source,
+    );
+
+    return installFromGitHub(
+      repoZipUrl: repoZipUrl,
+      owner: owner,
+      repo: repo,
+      branch: b,
+      skillsPath: sp,
+      skillDirName: skillDir,
+      metadata: metadata,
+      agent: agent,
+    );
+  }
+
+  /// 从 GitHub 下载并安装 Skill。
+  /// 由于 GitHub 不支持单目录 zip 下载，需要下载整个仓库后按路径过滤解压。
+  Future<Skill> installFromGitHub({
+    required String repoZipUrl,
+    required String owner,
+    required String repo,
+    required String branch,
+    required String skillsPath,
+    required String skillDirName,
+    required Skill metadata,
+    required AgentTarget agent,
+  }) async {
+    final http.Response response = await http.get(
+      Uri.parse(repoZipUrl),
+      headers: <String, String>{'Accept': 'application/vnd.github+json'},
+    );
+    if (response.statusCode != 200) {
+      throw Exception('下载失败：HTTP ${response.statusCode}');
+    }
+
+    final Archive archive = ZipDecoder().decodeBytes(response.bodyBytes);
+    final String skillSubPath = '$skillsPath/$skillDirName/';
+
+    // 过滤出属于目标 Skill 的文件
+    final List<ArchiveFile> skillFiles = archive
+        .where((ArchiveFile f) => f.name.contains(skillSubPath))
+        .toList();
+
+    if (skillFiles.isEmpty) {
+      throw Exception('在仓库 zip 中未找到 $skillDirName 目录');
+    }
+
+    // 确定安装根目录
+    final List<String> homes = _homeCandidates();
+    if (homes.isEmpty) {
+      throw Exception('无法获取 HOME 目录');
+    }
+    final String targetRoot = _primaryDiscoveryRoot(agent, homes.first);
+    final Directory outputDir = Directory('$targetRoot/$skillDirName');
+
+    // 同名先删除再安装
+    if (await outputDir.exists()) {
+      await outputDir.delete(recursive: true);
+    }
+    await outputDir.create(recursive: true);
+
+    // 解压目标 skill 的文件
+    for (final ArchiveFile file in skillFiles) {
+      final int skillPathStart = file.name.indexOf(skillSubPath);
+      if (skillPathStart == -1) {
+        continue;
+      }
+      final String relativePath =
+          file.name.substring(skillPathStart + skillSubPath.length);
+      if (relativePath.isEmpty) {
+        continue;
+      }
+
+      final String outPath = '${outputDir.path}/$relativePath';
+      if (file.isFile) {
+        final File outFile = File(outPath);
+        await outFile.parent.create(recursive: true);
+        await outFile.writeAsBytes(file.content as List<int>);
+      } else {
+        await Directory(outPath).create(recursive: true);
+      }
+    }
+
+    // 更新 SKILL.md 元数据，记录 GitHub 信息以便后续更新
+    final Map<String, String> fm = {
+      'name': metadata.name,
+      'version': metadata.version,
+      'description': metadata.description,
+      'author': metadata.author,
+      'source': metadata.source,
+      'github_owner': owner,
+      'github_repo': repo,
+      'github_branch': branch,
+      'github_skills_path': skillsPath,
+      'github_skill_dir': skillDirName,
+    };
+
+    final File skillMdFile = File('${outputDir.path}/SKILL.md');
+    String content = '';
+    if (await skillMdFile.exists()) {
+      content = await skillMdFile.readAsString();
+      // 移除原有的 frontmatter
+      if (content.trim().startsWith('---')) {
+        final int secondDash = content.indexOf('---', 3);
+        if (secondDash != -1) {
+          content = content.substring(secondDash + 3).trim();
+        }
+      }
+    }
+
+    final StringBuffer sb = StringBuffer('---\n');
+    fm.forEach((key, value) {
+      sb.writeln('$key: "$value"');
+    });
+    sb.writeln('---');
+    if (content.isNotEmpty) {
+      sb.writeln();
+      sb.write(content.trim());
+    }
+    await skillMdFile.writeAsString(sb.toString());
+
+    return Skill(
+      id: _genId('${agent.id}_$skillDirName'),
+      agentId: agent.id,
+      name: metadata.name,
+      version: metadata.version,
+      description: metadata.description,
+      author: metadata.author,
+      source: metadata.source,
+      installedPath: outputDir.absolute.path,
+      metadata: fm,
     );
   }
 
@@ -134,7 +351,8 @@ class SkillService {
       return 0;
     }
 
-    final List<Skill> sourceSkills = await getInstalledSkillsForAgent(sourceAgent);
+    final List<Skill> sourceSkills =
+        await getInstalledSkillsForAgent(sourceAgent);
     if (sourceSkills.isEmpty) {
       return 0;
     }
@@ -222,6 +440,7 @@ class SkillService {
     File zipFile, {
     required AgentTarget agent,
     String? preferredName,
+    Map<String, String>? metadata,
   }) async {
     final List<int> bytes = await zipFile.readAsBytes();
     final Archive archive = ZipDecoder().decodeBytes(bytes);
@@ -266,9 +485,7 @@ class SkillService {
 
       // 去掉顶层目录前缀（若有）
       final String relativePath = hasSingleTopDir
-          ? cleanPath
-              .substring(folderName.length)
-              .replaceAll(RegExp(r'^/'), '')
+          ? cleanPath.substring(folderName.length).replaceAll(RegExp(r'^/'), '')
           : cleanPath;
       if (relativePath.isEmpty) continue;
 
@@ -282,14 +499,42 @@ class SkillService {
       }
     }
 
+    // 写入/更新 SKILL.md 的元数据
+    if (metadata != null) {
+      final File skillMdFile = File('${outputDir.path}/SKILL.md');
+      String content = '';
+      if (await skillMdFile.exists()) {
+        content = await skillMdFile.readAsString();
+      }
+
+      // 移除原有的 frontmatter
+      if (content.trim().startsWith('---')) {
+        final int secondDash = content.indexOf('---', 3);
+        if (secondDash != -1) {
+          content = content.substring(secondDash + 3).trim();
+        }
+      }
+
+      final StringBuffer sb = StringBuffer('---\n');
+      metadata.forEach((key, value) {
+        sb.writeln('$key: "$value"');
+      });
+      sb.writeln('---');
+      if (content.isNotEmpty) {
+        sb.writeln();
+        sb.write(content.trim());
+      }
+      await skillMdFile.writeAsString(sb.toString());
+    }
+
     return Skill(
       id: _genId('${agent.id}_$folderName'),
       agentId: agent.id,
-      name: folderName,
-      version: 'local',
-      description: '已安装',
-      author: 'unknown',
-      source: 'upload',
+      name: metadata?['name'] ?? folderName,
+      version: metadata?['version'] ?? 'local',
+      description: metadata?['description'] ?? '已安装',
+      author: metadata?['author'] ?? 'unknown',
+      source: metadata?['source'] ?? 'upload',
       installedPath: outputDir.absolute.path,
     );
   }
@@ -320,7 +565,7 @@ class SkillService {
     if (roots.isEmpty) {
       // 兜底：根据平台构造默认技能目录
       final String sep = Platform.pathSeparator;
-      return '${home}${sep}.skill_lake${sep}${agent.id}${sep}skills';
+      return '$home$sep.skill_lake$sep${agent.id}${sep}skills';
     }
     return roots.first;
   }
@@ -382,49 +627,50 @@ class SkillService {
         final File skillMd = skillMds.first;
 
         String description = '';
+        String version = 'local';
+        String author = 'local';
+        String name = basename;
+        String? source;
+
         try {
           final String content = await skillMd.readAsString();
-          
-          // Try to extract YAML frontmatter
-          String yamlContent = content;
-          final RegExp frontmatterExp = RegExp(r'^---\s*\n(.*?)\n---', multiLine: true, dotAll: true);
-          final RegExpMatch? match = frontmatterExp.firstMatch(content);
-          if (match != null) {
-            yamlContent = match.group(1) ?? '';
+          final Map<String, String> frontmatter =
+              _parseYamlFrontmatter(content);
+
+          if (frontmatter.containsKey('description')) {
+            description = frontmatter['description'] ?? '';
+          }
+          if (frontmatter.containsKey('version') ||
+              frontmatter.containsKey('v')) {
+            version = frontmatter['version'] ?? frontmatter['v'] ?? 'local';
+          }
+          if (frontmatter.containsKey('author')) {
+            author = frontmatter['author'] ?? 'local';
+          }
+          if (frontmatter.containsKey('name')) {
+            name = frontmatter['name'] ?? basename;
+          }
+          if (frontmatter.containsKey('source')) {
+            source = frontmatter['source'];
           }
 
-          try {
-            final dynamic parsedYaml = loadYaml(yamlContent);
-            if (parsedYaml is YamlMap && parsedYaml.containsKey('description')) {
-              description = parsedYaml['description']?.toString().trim() ?? '';
-            }
-          } catch (_) {}
+          // 使用真实绝对路径，确保展示路径与磁盘路径完全一致
+          final String realPath = child.absolute.path;
 
-          // Fallback if YAML parsing fails or no description is found
-          if (description.isEmpty || description == '|' || description == '|-') {
-            final RegExp descExp = RegExp(r'^description:\s*(.+)$', multiLine: true);
-            final RegExpMatch? fallbackMatch = descExp.firstMatch(content);
-            if (fallbackMatch != null) {
-              description = fallbackMatch.group(1)?.trim() ?? '';
-            }
-          }
+          discovered.add(
+            Skill(
+              id: _genId('${agent.id}_$realPath'),
+              agentId: agent.id,
+              name: name,
+              version: version,
+              description: description,
+              author: author,
+              source: source ?? 'auto:$root',
+              installedPath: realPath,
+              metadata: frontmatter,
+            ),
+          );
         } catch (_) {}
-
-        // 使用真实绝对路径，确保展示路径与磁盘路径完全一致
-        final String realPath = child.absolute.path;
-
-        discovered.add(
-          Skill(
-            id: _genId('${agent.id}_$realPath'),
-            agentId: agent.id,
-            name: basename,
-            version: 'local',
-            description: description,
-            author: 'local',
-            source: 'auto:$root',
-            installedPath: realPath,
-          ),
-        );
       }
     }
 
@@ -440,7 +686,48 @@ class SkillService {
     return discovered;
   }
 
+  /// 解析 SKILL.md 内容中的 YAML frontmatter。
+  Map<String, String> _parseYamlFrontmatter(String content) {
+    final Map<String, String> result = <String, String>{};
+    final String trimmed = content.trim();
 
+    // 检查是否以 --- 开头
+    if (!trimmed.startsWith('---')) {
+      return result;
+    }
+
+    // 找到第二个 ---
+    final int secondDash = trimmed.indexOf('---', 3);
+    if (secondDash == -1) {
+      return result;
+    }
+
+    final String yamlString = trimmed.substring(3, secondDash).trim();
+    try {
+      final dynamic doc = loadYaml(yamlString);
+      if (doc is YamlMap) {
+        doc.forEach((key, value) {
+          if (key is String) {
+            result[key] = value?.toString() ?? '';
+          }
+        });
+      }
+    } catch (_) {
+      // 降级到简易解析
+      for (final String line in yamlString.split('\n')) {
+        final int colonIndex = line.indexOf(':');
+        if (colonIndex == -1) continue;
+        final String key = line.substring(0, colonIndex).trim();
+        final String value = line.substring(colonIndex + 1).trim();
+        if (key.isNotEmpty && value.isNotEmpty) {
+          result[key] =
+              value.replaceAll(RegExp(r'^["' "'" r']|["' "'" r']$'), '').trim();
+        }
+      }
+    }
+
+    return result;
+  }
 
   /// 返回可能的 HOME 目录候选列表（通过环境变量推断）。
   List<String> _homeCandidates() {

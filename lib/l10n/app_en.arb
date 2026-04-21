@@ -68,6 +68,23 @@
   "install": "Install",
   "refreshCache": "Refresh Cache",
   "search": "Search",
+  "updateAvailable": "Update ({version})",
+  "@updateAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updating": "Updating...",
+  "updateSuccess": "Updated {name} to the latest version",
+  "@updateSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "searchHint": "Semantic search, e.g.: SKILL for front-end development",
   "skillsmpSettings": "Skillsmp Settings",
   "apiKeyHint": "Setting your own API Key can get more search quota.",
