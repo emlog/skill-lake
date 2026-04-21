@@ -112,7 +112,8 @@ class AgentManagementPage extends StatelessWidget {
                 final String name = nameController.text.trim();
                 final String dir = dirController.text.trim();
                 if (name.isNotEmpty && dir.isNotEmpty) {
-                  final String newId = 'custom_${DateTime.now().millisecondsSinceEpoch}';
+                  final String newId =
+                      'custom_${DateTime.now().millisecondsSinceEpoch}';
                   final AgentTarget newAgent = AgentTarget(
                     id: newId,
                     displayName: name,
@@ -131,9 +132,12 @@ class AgentManagementPage extends StatelessWidget {
     );
   }
 
-  void _editCustomAgent(BuildContext context, int index, AgentTarget agent, AppLocalizations l10n) {
-    final TextEditingController nameController = TextEditingController(text: agent.displayName);
-    final TextEditingController dirController = TextEditingController(text: agent.skillsDirectory);
+  void _editCustomAgent(BuildContext context, int index, AgentTarget agent,
+      AppLocalizations l10n) {
+    final TextEditingController nameController =
+        TextEditingController(text: agent.displayName);
+    final TextEditingController dirController =
+        TextEditingController(text: agent.skillsDirectory);
 
     showDialog<void>(
       context: context,
@@ -183,7 +187,8 @@ class AgentManagementPage extends StatelessWidget {
     );
   }
 
-  void _deleteCustomAgent(BuildContext context, int index, AgentTarget agent, AppLocalizations l10n) {
+  void _deleteCustomAgent(BuildContext context, int index, AgentTarget agent,
+      AppLocalizations l10n) {
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -284,10 +289,13 @@ class _AgentCard extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           agent.displayName,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: isDefault ? FontWeight.w600 : FontWeight.w500,
-                                color: color.onSurface,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: isDefault
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                    color: color.onSurface,
+                                  ),
                         ),
                         if (isDefault) ...<Widget>[
                           const SizedBox(width: 8),
@@ -306,7 +314,8 @@ class _AgentCard extends StatelessWidget {
                               style: Theme.of(context)
                                   .textTheme
                                   .labelSmall
-                                  ?.copyWith(color: color.onSurface, fontSize: 10),
+                                  ?.copyWith(
+                                      color: color.onSurface, fontSize: 10),
                             ),
                           ),
                         ],
@@ -322,7 +331,8 @@ class _AgentCard extends StatelessWidget {
                   child: IconButton(
                     onPressed: onEdit,
                     iconSize: 20,
-                    icon: Icon(Icons.edit_outlined, color: color.onSurfaceVariant),
+                    icon: Icon(Icons.edit_outlined,
+                        color: color.onSurfaceVariant),
                   ),
                 ),
                 Tooltip(
@@ -336,13 +346,16 @@ class _AgentCard extends StatelessWidget {
               ],
               // 设为默认按钮
               Tooltip(
-                message: isDefault ? l10n.currentDefaultAgent : l10n.setDefaultAgent,
+                message:
+                    isDefault ? l10n.currentDefaultAgent : l10n.setDefaultAgent,
                 child: IconButton(
                   onPressed: onSetDefault,
                   iconSize: 20,
                   icon: Icon(
                     isDefault ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: isDefault ? color.primary : color.onSurfaceVariant.withValues(alpha: 0.5),
+                    color: isDefault
+                        ? color.primary
+                        : color.onSurfaceVariant.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -363,7 +376,8 @@ class _AgentCard extends StatelessWidget {
     );
   }
 
-  void _showAgentDetails(BuildContext context, AgentTarget agent, AppLocalizations l10n) {
+  void _showAgentDetails(
+      BuildContext context, AgentTarget agent, AppLocalizations l10n) {
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -376,7 +390,8 @@ class _AgentCard extends StatelessWidget {
               _DetailRow(
                 label: l10n.homepage,
                 value: agent.homepageUrl ?? '无',
-                isLink: agent.homepageUrl != null && agent.homepageUrl!.isNotEmpty,
+                isLink:
+                    agent.homepageUrl != null && agent.homepageUrl!.isNotEmpty,
               ),
               const SizedBox(height: 8),
               _DetailRow(

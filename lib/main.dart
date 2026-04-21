@@ -9,6 +9,7 @@ import 'pages/skill_store_page.dart';
 import 'services/agent_service.dart';
 import 'services/settings_service.dart';
 import 'widgets/app_scaffold_shell.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +53,9 @@ class _SkillLakeAppState extends State<SkillLakeApp> {
     final ColorScheme colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
-      primary: brightness == Brightness.light ? const Color(0xFF171717) : const Color(0xFFECECEC),
+      primary: brightness == Brightness.light
+          ? const Color(0xFF171717)
+          : const Color(0xFFECECEC),
     );
 
     return ThemeData(
@@ -78,7 +81,8 @@ class _SkillLakeAppState extends State<SkillLakeApp> {
         fillColor: brightness == Brightness.light
             ? const Color(0xFFF9F9F9)
             : const Color(0xFF2C2C2C),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
@@ -164,11 +168,21 @@ class _HomeScreenState extends State<HomeScreen> {
   List<AgentTarget> _agents = const <AgentTarget>[];
 
   bool _loadingAgents = true;
+  String _appVersion = '';
 
   @override
   void initState() {
     super.initState();
     _loadAgents();
+    _loadAppInfo();
+  }
+
+  Future<void> _loadAppInfo() async {
+    final PackageInfo info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() {
+      _appVersion = info.version;
+    });
   }
 
   /// 从持久化存储加载 Agent 列表
@@ -249,9 +263,8 @@ class _HomeScreenState extends State<HomeScreen> {
               }
               setState(() {
                 _agents = updated;
-                final List<AgentTarget> enabled = updated
-                    .where((AgentTarget item) => item.enabled)
-                    .toList();
+                final List<AgentTarget> enabled =
+                    updated.where((AgentTarget item) => item.enabled).toList();
                 if (enabled.isEmpty) {
                   _selectedAgent = 0;
                   _selectedMenu = 1;
@@ -277,6 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onMenuChanged: (int index) => setState(() => _selectedMenu = index),
       onLocaleChanged: widget.onLocaleChanged,
       content: content,
+      appVersion: _appVersion,
     );
   }
 }

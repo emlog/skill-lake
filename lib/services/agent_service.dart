@@ -38,29 +38,29 @@ class AgentService {
     // 若没有任何默认 Agent，则将第一个启用的 Agent 设为默认
     final bool hasDefault = agents.any((AgentTarget a) => a.isDefault);
     if (!hasDefault && agents.isNotEmpty) {
-      final int firstEnabled =
-          agents.indexWhere((AgentTarget a) => a.enabled);
+      final int firstEnabled = agents.indexWhere((AgentTarget a) => a.enabled);
       final int target = firstEnabled >= 0 ? firstEnabled : 0;
       agents[target] = agents[target].copyWith(isDefault: true);
     }
 
     // 将内置列表中新增的 Agent 追加到末尾（解决版本升级后新 Agent 不出现的问题）
-    final Set<String> existingIds =
-        agents.map((AgentTarget a) => a.id).toSet();
+    final Set<String> existingIds = agents.map((AgentTarget a) => a.id).toSet();
     for (final AgentTarget builtIn in _defaultAgents) {
       if (!existingIds.contains(builtIn.id)) {
         // 新增的 Agent 不设为默认，用户可手动切换
         agents.add(builtIn.copyWith(isDefault: false));
       } else {
         // 补充可能因旧版本缓存导致缺失的属性（如：主页和技能目录）
-        final int index = agents.indexWhere((AgentTarget a) => a.id == builtIn.id);
+        final int index =
+            agents.indexWhere((AgentTarget a) => a.id == builtIn.id);
         if (index != -1) {
           final AgentTarget existing = agents[index];
           agents[index] = existing.copyWith(
             displayName: builtIn.displayName,
             icon: builtIn.icon,
             homepageUrl: builtIn.homepageUrl ?? existing.homepageUrl,
-            skillsDirectory: builtIn.skillsDirectory ?? existing.skillsDirectory,
+            skillsDirectory:
+                builtIn.skillsDirectory ?? existing.skillsDirectory,
           );
         }
       }
@@ -120,8 +120,8 @@ class AgentService {
           skillsDirectory: '~/.cursor/skills/',
         ),
         AgentTarget(
-          id: 'claude_code', 
-          displayName: 'Claude Code', 
+          id: 'claude_code',
+          displayName: 'Claude Code',
           icon: 'bolt',
           homepageUrl: 'https://claude.com/product/claude-code',
           skillsDirectory: '~/.claude/skills/',
@@ -148,8 +148,8 @@ class AgentService {
           skillsDirectory: '~/.gemini/skills/',
         ),
         AgentTarget(
-          id: 'antigravity', 
-          displayName: 'Antigravity', 
+          id: 'antigravity',
+          displayName: 'Antigravity',
           icon: 'gravity',
           homepageUrl: 'https://antigravity.google/',
           skillsDirectory: '~/.gemini/antigravity/skills/',

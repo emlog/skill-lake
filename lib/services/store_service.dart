@@ -150,17 +150,17 @@ class StoreService {
       // 检查缓存是否过期（24 小时）
       final int? ts = cached['timestamp'] as int?;
       if (ts != null) {
-        final DateTime cachedAt =
-            DateTime.fromMillisecondsSinceEpoch(ts);
+        final DateTime cachedAt = DateTime.fromMillisecondsSinceEpoch(ts);
         if (DateTime.now().difference(cachedAt).inHours > 24) {
           return null; // 缓存已过期
         }
       }
 
-      final List<dynamic> items = cached['items'] as List<dynamic>? ?? <dynamic>[];
+      final List<dynamic> items =
+          cached['items'] as List<dynamic>? ?? <dynamic>[];
       return items
-          .map((dynamic e) =>
-              StoreSkillItem.fromJson(e as Map<String, dynamic>))
+          .map(
+              (dynamic e) => StoreSkillItem.fromJson(e as Map<String, dynamic>))
           .toList();
     } catch (_) {
       return null;
@@ -209,8 +209,7 @@ class StoreService {
         return items;
       }
 
-      final List<dynamic> dirs =
-          json.decode(dirResponse.body) as List<dynamic>;
+      final List<dynamic> dirs = json.decode(dirResponse.body) as List<dynamic>;
 
       // 2. 对每个子目录，请求其 SKILL.md 文件并解析 YAML frontmatter
       for (final dynamic entry in dirs) {
@@ -237,10 +236,8 @@ class StoreService {
           final Map<String, String> frontmatter =
               _parseYamlFrontmatter(mdResponse.body);
 
-          final String skillName =
-              frontmatter['name'] ?? name;
-          final String skillDescription =
-              frontmatter['description'] ?? '无描述';
+          final String skillName = frontmatter['name'] ?? name;
+          final String skillDescription = frontmatter['description'] ?? '无描述';
 
           items.add(
             StoreSkillItem(
@@ -320,7 +317,8 @@ class StoreService {
   }
 
   /// 搜索 skillsmp API
-  Future<List<StoreSkillItem>> searchSkillsmp(String query, String apiKey) async {
+  Future<List<StoreSkillItem>> searchSkillsmp(
+      String query, String apiKey) async {
     if (query.trim().isEmpty) {
       return <StoreSkillItem>[];
     }
@@ -343,13 +341,16 @@ class StoreService {
         return <StoreSkillItem>[];
       }
 
-      final Map<String, dynamic> pageData = data['data'] as Map<String, dynamic>;
-      final List<dynamic> items = pageData['data'] as List<dynamic>? ?? <dynamic>[];
+      final Map<String, dynamic> pageData =
+          data['data'] as Map<String, dynamic>;
+      final List<dynamic> items =
+          pageData['data'] as List<dynamic>? ?? <dynamic>[];
       final List<StoreSkillItem> results = <StoreSkillItem>[];
 
       for (final dynamic e in items) {
         final Map<String, dynamic> itemMap = e as Map<String, dynamic>;
-        final Map<String, dynamic>? skillMap = itemMap['skill'] as Map<String, dynamic>?;
+        final Map<String, dynamic>? skillMap =
+            itemMap['skill'] as Map<String, dynamic>?;
         if (skillMap == null) {
           continue;
         }
@@ -399,7 +400,8 @@ class StoreService {
       final String repo = segments[1];
       final String branch = segments[3];
       // 第 4 部分到倒数第 2 部分组成 skillsPath
-      final List<String> pathSegments = segments.sublist(4, segments.length - 1);
+      final List<String> pathSegments =
+          segments.sublist(4, segments.length - 1);
       final String skillsPath = pathSegments.join('/');
 
       return GitHubSkillSource(

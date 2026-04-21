@@ -2,31 +2,47 @@
 
 export PATH="/opt/homebrew/bin:$PATH"
 
-echo "Building Flutter macOS in release mode..."
-flutter build macos --release
+# Function to display error and exit
+error_exit() {
+    echo "❌ Error: $1"
+    exit 1
+}
+
+# 1. Run validation checks
+echo "🔍 Running code analysis..."
+flutter analyze || error_exit "Code analysis failed"
+
+echo "🔍 Checking code formatting..."
+flutter format --set-exit-if-changed . || error_exit "Code formatting check failed. Please run 'flutter format .'"
+
+# 2. Version handling
+if [ -n "$1" ]; then
+    NEW_VERSION=$1
+    echo "🆙 Bumping version to $NEW_VERSION in pubspec.yaml..."
+    # macOS sed handles -i differently, so we use a temporary file or a simpler approach
+    sed -i '' "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml || error_exit "Failed to update version in pubspec.yaml"
+fi
 
 # Extract version from pubspec.yaml
 VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
-if [ -z "$VERSION" ]; then
-    echo "Error: Could not extract version from pubspec.yaml"
-    exit 1
-fi
-echo "Extracted version: $VERSION"
+[ -z "$VERSION" ] && error_exit "Could not extract version from pubspec.yaml"
+echo "✅ Version to release: $VERSION"
+
+# 3. Build the app
+echo "🏗️ Building Flutter macOS in release mode..."
+flutter build macos --release || error_exit "Build failed"
 
 APP_PATH="build/macos/Build/Products/Release/Skill Lake.app"
 DMG_NAME="SkillLake-${VERSION}.dmg"
 
 if [ ! -d "$APP_PATH" ]; then
-    echo "Error: App build failed or path not found at $APP_PATH"
-    exit 1
+    error_exit "App build failed or path not found at $APP_PATH"
 fi
 
-echo "Creating DMG package..."
-if [ -f "$DMG_NAME" ]; then
-    rm "$DMG_NAME"
-fi
+# 4. Create DMG
+echo "📦 Creating DMG package..."
+[ -f "$DMG_NAME" ] && rm "$DMG_NAME"
 
-# Create a staging directory to include the the app and the Applications symlink
 DMG_STAGING_DIR="build/macos/Build/Products/Release/dmg_staging"
 rm -rf "$DMG_STAGING_DIR"
 mkdir -p "$DMG_STAGING_DIR"
@@ -34,12 +50,11 @@ mkdir -p "$DMG_STAGING_DIR"
 cp -R "$APP_PATH" "$DMG_STAGING_DIR/"
 ln -s /Applications "$DMG_STAGING_DIR/Applications"
 
-hdiutil create -volname "Skill Lake" -srcfolder "$DMG_STAGING_DIR" -ov -format UDZO "$DMG_NAME"
-
-# Clean up staging directory
+hdiutil create -volname "Skill Lake" -srcfolder "$DMG_STAGING_DIR" -ov -format UDZO "$DMG_NAME" || error_exit "DMG creation failed"
 rm -rf "$DMG_STAGING_DIR"
 
-echo "Updating Homebrew Cask (local)..."
+# 5. Update Local Homebrew Cask
+echo "🏠 Updating Homebrew Cask (local)..."
 mkdir -p Casks
 SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')
 cat <<EOF > Casks/skill-lake.rb
@@ -62,16 +77,17 @@ cask "skill-lake" do
 end
 EOF
 
-echo "Committing and Tagging in Git..."
-git add -u
+# 6. Git Operations
+echo "🚀 Committing and Tagging in Git..."
+git add pubspec.yaml
 git add Casks/skill-lake.rb
 git diff --cached --quiet || git commit -m "chore: release ${VERSION}"
 git tag -f "${VERSION}"
 git push origin main
 git push origin "${VERSION}" -f
 
-echo "Creating GitHub Release..."
-# Make sure to handle if the release already exists
+# 7. GitHub Release
+echo "🐙 Creating GitHub Release..."
 gh release view "${VERSION}" >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   echo "Release ${VERSION} already exists. Overwriting asset..."
@@ -80,18 +96,12 @@ else
   gh release create "${VERSION}" "$DMG_NAME" --title "Skill Lake ${VERSION}" --notes "Release version ${VERSION}"
 fi
 
-echo "Release successfully completed!"
-
-echo "Updating Homebrew Tap..."
+# 8. Update Homebrew Tap
+echo "🍺 Updating Homebrew Tap..."
 TAP_REPO="emlog/homebrew-skill-lake"
 TAP_DIR="homebrew-skill-lake"
-SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')
 
-gh repo view "$TAP_REPO" >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-  echo "Creating tap repository $TAP_REPO..."
-  gh repo create "$TAP_REPO" --public --description "Homebrew tap for Skill Lake"
-fi
+gh repo view "$TAP_REPO" >/dev/null 2>&1 || gh repo create "$TAP_REPO" --public --description "Homebrew tap for Skill Lake"
 
 rm -rf "$TAP_DIR"
 gh repo clone "$TAP_REPO" "$TAP_DIR"
@@ -124,4 +134,4 @@ git push origin main
 cd ..
 rm -rf "$TAP_DIR"
 
-echo "Homebrew tap updated!"
+echo "✨ Release version $VERSION successfully completed!"
