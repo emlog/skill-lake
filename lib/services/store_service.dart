@@ -61,6 +61,13 @@ class SkillsmpSkillSource extends SkillSource {
   String get displayName => 'skillsmp';
 }
 
+/// Skillsmp 搜索结果封装
+class SkillsmpSearchResult {
+  const SkillsmpSearchResult({required this.items, required this.hasNext});
+  final List<StoreSkillItem> items;
+  final bool hasNext;
+}
+
 /// 商店中展示的 Skill 条目。
 class StoreSkillItem {
   const StoreSkillItem({
@@ -317,14 +324,19 @@ class StoreService {
   }
 
   /// 搜索 skillsmp API
-  Future<List<StoreSkillItem>> searchSkillsmp(
-      String query, String apiKey) async {
+  Future<SkillsmpSearchResult> searchSkillsmp(
+    String query,
+    String apiKey, {
+    int page = 1,
+    int limit = 20,
+    String sortBy = 'stars',
+  }) async {
     if (query.trim().isEmpty) {
-      return <StoreSkillItem>[];
+      return const SkillsmpSearchResult(items: [], hasNext: false);
     }
     try {
       final Uri url = Uri.parse(
-          'https://skillsmp.com/api/v1/skills/ai-search?q=${Uri.encodeComponent(query)}');
+          'https://skillsmp.com/api/v1/skills/ai-search?q=${Uri.encodeComponent(query)}&page=$page&limit=$limit&sortBy=$sortBy');
       final Map<String, String> headers = <String, String>{};
       if (apiKey.trim().isNotEmpty) {
         headers['Authorization'] = 'Bearer $apiKey';
@@ -332,28 +344,27 @@ class StoreService {
 
       final http.Response response = await http.get(url, headers: headers);
       if (response.statusCode != 200) {
-        return <StoreSkillItem>[];
+        return const SkillsmpSearchResult(items: [], hasNext: false);
       }
 
       final Map<String, dynamic> data =
           json.decode(response.body) as Map<String, dynamic>;
       if (data['success'] != true) {
-        return <StoreSkillItem>[];
+        return const SkillsmpSearchResult(items: [], hasNext: false);
       }
 
-      final Map<String, dynamic> pageData =
-          data['data'] as Map<String, dynamic>;
+      final Map<String, dynamic> dataMap = data['data'] as Map<String, dynamic>;
       final List<dynamic> items =
-          pageData['data'] as List<dynamic>? ?? <dynamic>[];
+          dataMap['data'] as List<dynamic>? ?? <dynamic>[];
+      final bool hasNext = dataMap['has_more'] as bool? ?? false;
+
       final List<StoreSkillItem> results = <StoreSkillItem>[];
 
       for (final dynamic e in items) {
         final Map<String, dynamic> itemMap = e as Map<String, dynamic>;
         final Map<String, dynamic>? skillMap =
             itemMap['skill'] as Map<String, dynamic>?;
-        if (skillMap == null) {
-          continue;
-        }
+        if (skillMap == null) continue;
 
         final String githubUrl = skillMap['githubUrl'] as String? ?? '';
         final GitHubSkillSource? parsedSource = _parseGitHubUrl(githubUrl);
@@ -371,6 +382,7 @@ class StoreService {
                 description: skillMap['description'] as String? ?? '无描述',
                 author: skillMap['author'] as String? ?? parsedSource.owner,
                 source: 'skillsmp',
+                stars: (skillMap['stars'] as num?)?.toInt() ?? 0,
               ),
               source: parsedSource,
               skillDirName: skillDirName,
@@ -378,9 +390,15 @@ class StoreService {
           );
         }
       }
-      return results;
+
+      if (sortBy == 'stars') {
+        results.sort((StoreSkillItem a, StoreSkillItem b) =>
+            b.skill.stars.compareTo(a.skill.stars));
+      }
+
+      return SkillsmpSearchResult(items: results, hasNext: hasNext);
     } catch (_) {
-      return <StoreSkillItem>[];
+      return const SkillsmpSearchResult(items: [], hasNext: false);
     }
   }
 

@@ -13,7 +13,7 @@ echo "🔍 Running code analysis..."
 flutter analyze || error_exit "Code analysis failed"
 
 echo "🔍 Checking code formatting..."
-flutter format --set-exit-if-changed . || error_exit "Code formatting check failed. Please run 'flutter format .'"
+dart format --output=none --set-exit-if-changed . || error_exit "Code formatting check failed. Please run 'dart format .'"
 
 # 2. Version handling
 if [ -n "$1" ]; then

@@ -179,4 +179,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get getApiKey => '获取 API Key：';
+
+  @override
+  String get loadMore => '加载更多';
 }

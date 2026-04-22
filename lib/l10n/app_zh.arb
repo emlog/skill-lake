@@ -88,5 +88,6 @@
   "searchHint": "支持语义搜索，例如：最适合前端开发的SKILL",
   "skillsmpSettings": "Skillsmp 设置",
   "apiKeyHint": "设置您自己的 API Key 可以获得更多的搜索额度。",
-  "getApiKey": "获取 API Key："
+  "getApiKey": "获取 API Key：",
+  "loadMore": "加载更多"
 }

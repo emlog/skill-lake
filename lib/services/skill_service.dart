@@ -681,8 +681,22 @@ class SkillService {
       );
     }
 
-    // 按名称排序，方便展示
-    discovered.sort((Skill a, Skill b) => a.name.compareTo(b.name));
+    // 按照安装时间（目录最后修改时间）降序排序，最近安装的排在前面
+    discovered.sort((Skill a, Skill b) {
+      DateTime getTime(Skill s) {
+        if (s.installedPath == null || s.installedPath!.isEmpty) {
+          return DateTime.fromMillisecondsSinceEpoch(0);
+        }
+        try {
+          return FileStat.statSync(s.installedPath!).modified;
+        } catch (_) {
+          return DateTime.fromMillisecondsSinceEpoch(0);
+        }
+      }
+
+      return getTime(b).compareTo(getTime(a));
+    });
+
     return discovered;
   }
 

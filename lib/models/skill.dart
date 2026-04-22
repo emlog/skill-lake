@@ -9,6 +9,7 @@ class Skill {
     required this.description,
     required this.author,
     required this.source,
+    this.stars = 0,
     this.installedPath,
     this.tags = const [],
     this.metadata = const {},
@@ -21,6 +22,7 @@ class Skill {
   final String description;
   final String author;
   final String source;
+  final int stars;
   final String? installedPath;
   final List<String> tags;
   final Map<String, String> metadata;
@@ -33,6 +35,7 @@ class Skill {
     String? description,
     String? author,
     String? source,
+    int? stars,
     String? installedPath,
     List<String>? tags,
     Map<String, String>? metadata,
@@ -45,6 +48,7 @@ class Skill {
       description: description ?? this.description,
       author: author ?? this.author,
       source: source ?? this.source,
+      stars: stars ?? this.stars,
       installedPath: installedPath ?? this.installedPath,
       tags: tags ?? this.tags,
       metadata: metadata ?? this.metadata,
@@ -60,6 +64,7 @@ class Skill {
       'description': description,
       'author': author,
       'source': source,
+      'stars': stars,
       'installedPath': installedPath,
       'tags': tags,
       'metadata': metadata,
@@ -75,6 +80,7 @@ class Skill {
       description: map['description'] as String? ?? '',
       author: map['author'] as String? ?? 'unknown',
       source: map['source'] as String? ?? 'local',
+      stars: map['stars'] as int? ?? 0,
       installedPath: map['installedPath'] as String?,
       tags: ((map['tags'] as List<dynamic>?) ?? const [])
           .map((e) => e.toString())

@@ -88,5 +88,6 @@
   "searchHint": "Semantic search, e.g.: SKILL for front-end development",
   "skillsmpSettings": "Skillsmp Settings",
   "apiKeyHint": "Setting your own API Key can get more search quota.",
-  "getApiKey": "Get API Key: "
+  "getApiKey": "Get API Key: ",
+  "loadMore": "Load More"
 }

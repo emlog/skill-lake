@@ -48,6 +48,14 @@ class _SkillStorePageState extends State<SkillStorePage> {
   /// 当前源的 Skill 列表
   List<StoreSkillItem> _items = <StoreSkillItem>[];
 
+  /// 分页状态
+  int _currentPage = 1;
+  bool _canLoadMore = false;
+  bool _loadingMore = false;
+  String _lastQuery = '';
+  final String _currentSortBy = 'stars';
+  final int _pageSize = 20;
+
   /// 正在安装中的 skill id 集合（用于显示安装进度）
   final Set<String> _installingIds = <String>{};
 
@@ -168,16 +176,25 @@ class _SkillStorePageState extends State<SkillStorePage> {
           _loading = true;
           _hasSearched = true;
           _errorMessage = null;
+          _currentPage = 1;
+          _lastQuery = query;
         });
         try {
-          final List<StoreSkillItem> items =
-              await _storeService.searchSkillsmp(query, apiKey);
+          final SkillsmpSearchResult result =
+              await _storeService.searchSkillsmp(
+            query,
+            apiKey,
+            page: _currentPage,
+            limit: _pageSize,
+            sortBy: _currentSortBy,
+          );
           if (!mounted) {
             return;
           }
           setState(() {
-            _items = items;
+            _items = result.items;
             _loading = false;
+            _canLoadMore = result.hasNext;
           });
         } catch (e) {
           if (!mounted) {
@@ -314,9 +331,13 @@ class _SkillStorePageState extends State<SkillStorePage> {
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _items.length,
+      itemCount: _items.length + (_canLoadMore ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (BuildContext context, int index) {
+        if (index == _items.length) {
+          // 加载更多项
+          return _buildLoadMoreIndicator(l10n);
+        }
         final StoreSkillItem item = _items[index];
         final bool isInstalling = _installingIds.contains(item.skill.id);
         return _StoreSkillCard(
@@ -328,6 +349,58 @@ class _SkillStorePageState extends State<SkillStorePage> {
         );
       },
     );
+  }
+
+  Widget _buildLoadMoreIndicator(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: _loadingMore
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : OutlinedButton(
+                onPressed: _onLoadMore,
+                child: Text(l10n.loadMore),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _onLoadMore() async {
+    if (_loadingMore || !_canLoadMore) return;
+
+    setState(() {
+      _loadingMore = true;
+    });
+
+    try {
+      final String apiKey = await _settingsService.getSkillsmpApiKey();
+      final SkillsmpSearchResult result = await _storeService.searchSkillsmp(
+        _lastQuery,
+        apiKey,
+        page: _currentPage + 1,
+        limit: _pageSize,
+        sortBy: _currentSortBy,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _items.addAll(result.items);
+        _currentPage++;
+        _loadingMore = false;
+        _canLoadMore = result.hasNext;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingMore = false;
+      });
+      SnackbarUtil.show(context, '加载更多失败: $e', isSuccess: false);
+    }
   }
 
   final SkillService _skillService = SkillService();
@@ -503,6 +576,15 @@ class _StoreSkillCard extends StatelessWidget {
   final VoidCallback onViewDetail;
   final AppLocalizations l10n;
 
+  String _formatStars(int stars) {
+    if (stars >= 1000000) {
+      return '${(stars / 1000000).toStringAsFixed(1)}M';
+    } else if (stars >= 1000) {
+      return '${(stars / 1000).toStringAsFixed(1)}k';
+    }
+    return stars.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ColorScheme color = Theme.of(context).colorScheme;
@@ -580,6 +662,26 @@ class _StoreSkillCard extends StatelessWidget {
                                     fontSize: 10),
                           ),
                         ),
+                        if (item.skill.stars > 0) ...<Widget>[
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.star_rounded,
+                            size: 14,
+                            color: Colors.amber.shade600,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            _formatStars(item.skill.stars),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: color.onSurfaceVariant,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -646,6 +748,11 @@ class _StoreSkillDetailDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               _DetailRow(label: l10n.author, value: item.skill.author),
+              if (item.skill.stars > 0)
+                _DetailRow(
+                  label: 'Stars',
+                  value: item.skill.stars.toString(),
+                ),
               _DetailRow(
                 label: l10n.description,
                 value: item.skill.description,

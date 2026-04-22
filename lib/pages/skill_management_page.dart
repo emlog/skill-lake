@@ -156,6 +156,15 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
     return 'v: $v';
   }
 
+  String _formatStars(int stars) {
+    if (stars >= 1000000) {
+      return '${(stars / 1000000).toStringAsFixed(1)}M';
+    } else if (stars >= 1000) {
+      return '${(stars / 1000).toStringAsFixed(1)}k';
+    }
+    return stars.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = AppLocalizations.of(context)!;
@@ -315,16 +324,43 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                                       Padding(
                                         padding:
                                             const EdgeInsets.only(top: 2.0),
-                                        child: Text(
-                                          _formatVersion(skill.version),
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelSmall
-                                              ?.copyWith(
-                                                color: color.onSurfaceVariant
-                                                    .withValues(alpha: 0.7),
-                                                fontSize: 10,
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              _formatVersion(skill.version),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelSmall
+                                                  ?.copyWith(
+                                                    color: color
+                                                        .onSurfaceVariant
+                                                        .withValues(alpha: 0.7),
+                                                    fontSize: 10,
+                                                  ),
+                                            ),
+                                            if (skill.stars > 0) ...[
+                                              const SizedBox(width: 8),
+                                              Icon(
+                                                Icons.star_rounded,
+                                                size: 12,
+                                                color: Colors.amber.shade600,
                                               ),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                _formatStars(skill.stars),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelSmall
+                                                    ?.copyWith(
+                                                      color: color
+                                                          .onSurfaceVariant
+                                                          .withValues(
+                                                              alpha: 0.7),
+                                                      fontSize: 10,
+                                                    ),
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                       ),
                                   ],
@@ -815,6 +851,8 @@ class _SkillDetailDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             _SkillDetailRow(label: l10n.description, value: skill.description),
+            if (skill.stars > 0)
+              _SkillDetailRow(label: 'Stars', value: skill.stars.toString()),
             _SkillDetailRow(
               label: l10n.path,
               value: skill.installedPath?.isNotEmpty == true

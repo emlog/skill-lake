@@ -183,4 +183,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get getApiKey => 'Get API Key: ';
+
+  @override
+  String get loadMore => 'Load More';
 }

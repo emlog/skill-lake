@@ -8,8 +8,11 @@
 
 **Skill Lake** 是一款跨平台（macOS / Windows）的 AI Agent Skill 管理工具。支持搜索、安装、删除、同步 Skill。
 
+![Skill Lake 搜索](images/store_search.png)
+
 ## 核心特性
 
+- **语义搜索**：基于 skillsmp API 提供强大的 AI 语义搜索功能，助您高效发现并安装最新 AI 技能。
 - **一站式技能管理**：兼容并管理多个主流 AI 编程助手的 Skill 生命周期。
 - **丰富的技能商店**：聚合 GitHub 优质开源技能库（如 `anthropics/skills`），探索最新、最强的 AI 技能并实现一键安装。
 - **SKill 同步**：支持设置默认 AI Agent，并能一键将技能灵活分发与同步至其他Agent。

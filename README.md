@@ -8,8 +8,11 @@
 
 **Skill Lake** is a cross-platform (macOS / Windows) management tool for AI Agent Skills. It supports searching, installing, deleting, and syncing skills.
 
+![Skill Lake Search](images/store_search.png)
+
 ## Core Features
 
+- **Semantic Search**: Powered by the skillsmp API, enabling AI-driven semantic search to discover skills efficiently.
 - **One-stop Skill Management**: Compatible with and manages the lifecycle of skills for various popular AI programming assistants.
 - **Rich Skill Store**: Aggregates high-quality open-source skill libraries from GitHub (such as `anthropics/skills`), explore the latest and most powerful AI skills and install them with one click.
 - **Skill Sync**: Supports setting a default AI Agent and enables one-click flexible distribution and synchronization of skills to other agents.
