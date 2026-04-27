@@ -171,8 +171,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get searchHint =>
-      'Semantic search, e.g.: SKILL for front-end development';
+  String get searchHint => 'Search skills, press ↵ to search';
 
   @override
   String get skillsmpSettings => 'Skillsmp Settings';

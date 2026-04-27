@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/generated/app_localizations.dart';
 
@@ -728,70 +729,144 @@ class _StoreSkillDetailDialog extends StatelessWidget {
   final StoreSkillItem item;
   final AppLocalizations l10n;
 
+  Future<String> _loadRemoteSkillMd() async {
+    try {
+      final http.Response response = await http.get(Uri.parse(item.skillMdUrl));
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+      return '无法获取远程 SKILL.md (HTTP ${response.statusCode})';
+    } catch (e) {
+      return '加载远程文件失败: $e';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ColorScheme color = Theme.of(context).colorScheme;
+    final TextTheme textTheme = Theme.of(context).textTheme;
 
     return AlertDialog(
-      title: Row(
-        children: <Widget>[
-          Icon(Icons.auto_awesome_outlined, color: color.primary),
-          const SizedBox(width: 8),
-          Flexible(child: Text(item.skill.name)),
-        ],
-      ),
+      titlePadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: SizedBox(
-        width: 500,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              _DetailRow(label: l10n.author, value: item.skill.author),
-              if (item.skill.stars > 0)
-                _DetailRow(
-                  label: 'Stars',
-                  value: item.skill.stars.toString(),
+        width: 600,
+        height: 600,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // 顶部栏：标题与关闭按钮
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.skill.name,
+                        style: textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'by ${item.skill.author}',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: color.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              _DetailRow(
-                label: l10n.description,
-                value: item.skill.description,
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 20,
+                  color: color.onSurfaceVariant,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Skill Description 部分
+            Row(
+              children: [
+                Icon(Icons.auto_awesome_outlined,
+                    size: 18, color: color.onSurface),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.description,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              item.skill.description,
+              style: textTheme.bodyMedium?.copyWith(
+                color: color.onSurfaceVariant,
+                height: 1.5,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+
+            // SKILL.md 内容部分
+            Row(
+              children: [
+                Icon(Icons.article_outlined, size: 18, color: color.onSurface),
+                const SizedBox(width: 8),
+                Text(
+                  'SKILL.md',
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: color.outlineVariant.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: FutureBuilder<String>(
+                  future: _loadRemoteSkillMd(),
+                  builder:
+                      (BuildContext context, AsyncSnapshot<String> snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return SingleChildScrollView(
+                      child: SelectionArea(
+                        child: Text(
+                          snapshot.data ?? '',
+                          style: textTheme.bodySmall?.copyWith(
+                            fontFamily: 'monospace',
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-      actions: <Widget>[
-        FilledButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.close),
-        ),
-      ],
-    );
-  }
-}
-
-/// 详情信息行组件
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 4),
-          SelectableText(
-            value.trim().isEmpty ? '无' : value.trim().replaceAll(r'\n', '\n'),
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ],
       ),
     );
   }
@@ -937,63 +1012,72 @@ class _SkillsmpSearchHeaderState extends State<_SkillsmpSearchHeader> {
   @override
   Widget build(BuildContext context) {
     final ColorScheme color = Theme.of(context).colorScheme;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: <Widget>[
         Expanded(
           child: TextField(
             controller: _queryController,
+            style: TextStyle(
+              fontSize: 14,
+              color: color.onSurface,
+            ),
             decoration: InputDecoration(
               hintText: widget.l10n.searchHint,
-              prefixIcon: Icon(Icons.search, color: color.primary),
+              hintStyle: TextStyle(
+                color: color.onSurfaceVariant.withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                color: color.onSurfaceVariant.withValues(alpha: 0.6),
+                size: 20,
+              ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(24),
                 borderSide: BorderSide(
-                    color: color.outlineVariant.withValues(alpha: 0.5)),
+                  color: color.outlineVariant.withValues(alpha: 0.4),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(24),
                 borderSide: BorderSide(
-                    color: color.outlineVariant.withValues(alpha: 0.5)),
+                  color: color.outlineVariant.withValues(alpha: 0.4),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: color.primary),
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide(
+                  color: color.primary.withValues(alpha: 0.7),
+                  width: 1.5,
+                ),
               ),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF2C2C2C)
-                  : const Color(0xFFF9F9F9),
+              fillColor: isDark ? color.surfaceContainerLow : Colors.white,
               isDense: true,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
             onSubmitted: (_) => _onSearch(),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
+        // 设置按钮保持在右侧
         SizedBox(
-          height: 44,
-          child: FilledButton.icon(
-            onPressed: _onSearch,
-            icon: const Icon(Icons.search, size: 18),
-            label: Text(widget.l10n.search),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        SizedBox(
-          height: 44,
-          width: 44,
+          height: 40,
+          width: 40,
           child: IconButton(
             onPressed: _openSettingsDialog,
             tooltip: widget.l10n.skillsmpSettings,
             iconSize: 20,
-            icon: Icon(Icons.settings, color: color.onSurfaceVariant),
+            style: IconButton.styleFrom(
+              backgroundColor: color.surfaceContainerLow,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            icon: Icon(Icons.settings_outlined, color: color.onSurfaceVariant),
           ),
         ),
       ],

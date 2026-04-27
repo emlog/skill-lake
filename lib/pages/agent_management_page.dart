@@ -381,31 +381,74 @@ class _AgentCard extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
+        final ColorScheme color = Theme.of(context).colorScheme;
+        final TextTheme textTheme = Theme.of(context).textTheme;
+
         return AlertDialog(
-          title: Text(agent.displayName),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              _DetailRow(
-                label: l10n.homepage,
-                value: agent.homepageUrl ?? '无',
-                isLink:
-                    agent.homepageUrl != null && agent.homepageUrl!.isNotEmpty,
-              ),
-              const SizedBox(height: 8),
-              _DetailRow(
-                label: l10n.skillsDirectory,
-                value: agent.skillsDirectory ?? '未配置或不支持',
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.close),
+          titlePadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                // 顶部栏：标题与关闭按钮
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            agent.displayName,
+                            style: textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Agent Details',
+                            style: textTheme.bodySmall?.copyWith(
+                              color:
+                                  color.onSurfaceVariant.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                      iconSize: 20,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      splashRadius: 20,
+                      color: color.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                _DetailRow(
+                  label: l10n.homepage,
+                  value: agent.homepageUrl ?? '无',
+                  icon: Icons.language_outlined,
+                  isLink: agent.homepageUrl != null &&
+                      agent.homepageUrl!.isNotEmpty,
+                ),
+                const SizedBox(height: 24),
+                _DetailRow(
+                  label: l10n.skillsDirectory,
+                  value: agent.skillsDirectory ?? '未配置或不支持',
+                  icon: Icons.folder_outlined,
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -416,46 +459,71 @@ class _DetailRow extends StatelessWidget {
   const _DetailRow({
     required this.label,
     required this.value,
+    this.icon,
     this.isLink = false,
   });
 
   final String label;
   final String value;
+  final IconData? icon;
   final bool isLink;
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final ColorScheme color = Theme.of(context).colorScheme;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 4),
-        if (isLink && value != '无')
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => launchUrl(Uri.parse(value)),
-              child: Text(
-                value,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.primary,
-                      decoration: TextDecoration.underline,
-                      decorationColor: colorScheme.primary,
-                    ),
+        Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 18, color: color.onSurface),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              label,
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
             ),
-          )
-        else
-          SelectableText(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium,
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.surfaceContainerLow.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: color.outlineVariant.withValues(alpha: 0.3),
+            ),
           ),
+          child: isLink && value != '无'
+              ? MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => launchUrl(Uri.parse(value)),
+                    child: Text(
+                      value,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: color.primary,
+                        decoration: TextDecoration.underline,
+                        decorationColor: color.primary,
+                      ),
+                    ),
+                  ),
+                )
+              : SelectableText(
+                  value,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: color.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+        ),
       ],
     );
   }

@@ -240,11 +240,25 @@ class StoreService {
           }
 
           // 解析 YAML frontmatter 提取 name 和 description
-          final Map<String, String> frontmatter =
-              _parseYamlFrontmatter(mdResponse.body);
+          final String body = mdResponse.body;
+          final Map<String, String> metadata = _parseYamlFrontmatter(body);
 
-          final String skillName = frontmatter['name'] ?? name;
-          final String skillDescription = frontmatter['description'] ?? '无描述';
+          // 如果 metadata 中没有 usage_examples，尝试从正文中提取 ## Usage 之后的内容
+          if (!metadata.containsKey('usage_examples')) {
+            final RegExp usageRegex =
+                RegExp(r'##\s*Usage\s*\n([\s\S]*?)(?=\n##|$)');
+            final Match? match = usageRegex.firstMatch(body);
+            if (match != null) {
+              final String usageContent = match.group(1)?.trim() ?? '';
+              if (usageContent.isNotEmpty) {
+                // 简单处理：如果是列表项，保留内容
+                metadata['usage_examples'] = usageContent;
+              }
+            }
+          }
+
+          final String skillName = metadata['name'] ?? name;
+          final String skillDescription = metadata['description'] ?? '无描述';
 
           items.add(
             StoreSkillItem(
@@ -256,6 +270,7 @@ class StoreService {
                 description: skillDescription,
                 author: source.owner,
                 source: source.displayName,
+                metadata: metadata,
               ),
               source: source,
               skillDirName: name,

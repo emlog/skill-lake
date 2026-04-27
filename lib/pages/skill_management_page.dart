@@ -33,8 +33,11 @@ class SkillManagementPage extends StatefulWidget {
 
 class _SkillManagementPageState extends State<SkillManagementPage> {
   final SkillService _skillService = SkillService();
+  final TextEditingController _searchController = TextEditingController();
+
   List<Skill> _skills = <Skill>[];
   bool _loading = true;
+  String _searchQuery = '';
 
   /// 存储各个 Skill 的更新版本号，null 表示无更新或尚未检查
   final Map<String, String?> _updateVersions = <String, String?>{};
@@ -46,6 +49,12 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
   void initState() {
     super.initState();
     _loadSkills();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -168,101 +177,201 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = AppLocalizations.of(context)!;
+    final ColorScheme color = Theme.of(context).colorScheme;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // 根据搜索词过滤技能
+    final List<Skill> filteredSkills = _skills.where((skill) {
+      if (_searchQuery.isEmpty) return true;
+      final query = _searchQuery.toLowerCase();
+      return skill.name.toLowerCase().contains(query) ||
+          skill.description.toLowerCase().contains(query);
+    }).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
+        // 顶部 Agent 筛选栏 (仅包含筛选)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+            ),
+            child: _InlineAgentFilterBar(
+              agents: widget.agents,
+              selectedIndex: widget.selectedAgentIndex,
+              onChanged: widget.onAgentChanged,
+              defaultAgent: widget.defaultAgent,
+              l10n: l10n,
+            ),
           ),
+        ),
+        const SizedBox(height: 12),
+
+        // 搜索与操作栏 (新设计：左搜索右按钮)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
-            children: <Widget>[
+            children: [
+              // 搜索框 (精致小巧版)
               Expanded(
-                child: _InlineAgentFilterBar(
-                  agents: widget.agents,
-                  selectedIndex: widget.selectedAgentIndex,
-                  onChanged: widget.onAgentChanged,
-                  defaultAgent: widget.defaultAgent,
-                  l10n: l10n,
+                child: SizedBox(
+                  height: 36,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: l10n.searchHint
+                          .replaceAll('，按 ↵ 搜索', '')
+                          .replaceAll(', press ↵ to search', ''),
+                      hintStyle: TextStyle(
+                        color: color.onSurfaceVariant.withValues(alpha: 0.4),
+                        fontSize: 13,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: color.onSurfaceVariant.withValues(alpha: 0.5),
+                        size: 16,
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 14),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: color.outlineVariant.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: color.outlineVariant.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: color.primary.withValues(alpha: 0.5),
+                          width: 1.2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor:
+                          isDark ? color.surfaceContainerLow : Colors.white,
+                      isDense: true,
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              if (widget.agents.length > 1) ...<Widget>[
-                IconButton(
-                  tooltip: l10n.syncAllTo,
-                  iconSize: 18,
-                  onPressed: () => _onSyncAll(l10n),
-                  icon: const Icon(Icons.sync_alt_outlined),
-                ),
-                const SizedBox(width: 4),
-              ],
-              IconButton(
-                tooltip: l10n.uploadInstall,
-                iconSize: 18,
-                onPressed: _onUploadInstall,
-                icon: const Icon(Icons.upload),
+              const SizedBox(width: 12),
+              // 操作按钮组
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.agents.length > 1) ...<Widget>[
+                    _ActionButton(
+                      icon: Icons.sync_alt_outlined,
+                      tooltip: l10n.syncAllTo,
+                      onPressed: () => _onSyncAll(l10n),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _ActionButton(
+                    icon: Icons.upload_outlined,
+                    tooltip: l10n.uploadInstall,
+                    onPressed: _onUploadInstall,
+                  ),
+                  const SizedBox(width: 8),
+                  _ActionButton(
+                    icon: Icons.refresh_rounded,
+                    tooltip: l10n.refresh,
+                    onPressed: _loadSkills,
+                  ),
+                  const SizedBox(width: 8),
+                  _ActionButton(
+                    icon: Icons.delete_sweep_outlined,
+                    tooltip: l10n.deleteAll,
+                    onPressed:
+                        _skills.isEmpty ? null : () => _onDeleteAllSkills(l10n),
+                    isDanger: true,
+                    isDisabled: _skills.isEmpty,
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              IconButton(
-                tooltip: l10n.refresh,
-                iconSize: 18,
-                onPressed: _loadSkills,
-                icon: const Icon(Icons.refresh),
-              ),
-              const SizedBox(width: 4),
-              IconButton(
-                tooltip: l10n.deleteAll,
-                iconSize: 18,
-                onPressed:
-                    _skills.isEmpty ? null : () => _onDeleteAllSkills(l10n),
-                icon: Icon(Icons.delete_sweep,
-                    color: _skills.isEmpty
-                        ? Theme.of(context).disabledColor
-                        : Theme.of(context).colorScheme.error),
-              ),
-              const SizedBox(width: 4),
             ],
           ),
         ),
+
         const SizedBox(height: 12),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _skills.isEmpty
-                  ? Center(child: Text(l10n.noInstalledSkill))
+              : filteredSkills.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off_rounded,
+                              size: 48,
+                              color: color.onSurfaceVariant
+                                  .withValues(alpha: 0.2)),
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchQuery.isEmpty
+                                ? l10n.noInstalledSkill
+                                : l10n.noMatchSkill,
+                            style: TextStyle(
+                                color: color.onSurfaceVariant
+                                    .withValues(alpha: 0.5)),
+                          ),
+                        ],
+                      ),
+                    )
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _skills.length + 1,
+                      itemCount: filteredSkills.length + 1,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (BuildContext context, int index) {
-                        if (index == _skills.length) {
+                        if (index == filteredSkills.length) {
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Center(
                               child: Text(
-                                l10n.totalCount(_skills.length),
+                                l10n.totalCount(filteredSkills.length),
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall
-                                    ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .outline),
+                                    ?.copyWith(color: color.outline),
                               ),
                             ),
                           );
                         }
-                        final Skill skill = _skills[index];
+                        final Skill skill = filteredSkills[index];
                         final String? remoteVersion = _updateVersions[skill.id];
                         final bool isUpdating = _updatingIds.contains(skill.id);
 
                         // 有 installedPath 即可删除（不区分 auto/sync/upload）
                         final bool canDelete =
                             skill.installedPath?.isNotEmpty == true;
-                        final ColorScheme color = Theme.of(context).colorScheme;
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
                           shape: RoundedRectangleBorder(
@@ -764,7 +873,7 @@ class _InlineAgentFilterBar extends StatelessWidget {
               ),
               labelStyle: TextStyle(
                 fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                fontWeight: FontWeight.w500,
                 color: selected
                     ? Theme.of(context).colorScheme.onSurface
                     : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -836,46 +945,103 @@ class _SkillDetailDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme color = Theme.of(context).colorScheme;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return AlertDialog(
-      title: Row(
-        children: <Widget>[
-          Icon(Icons.auto_awesome_outlined, color: color.primary),
-          const SizedBox(width: 8),
-          Flexible(child: Text(skill.name)),
-        ],
-      ),
+      titlePadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: SizedBox(
-        width: 800,
+        width: 600,
         height: 600,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            _SkillDetailRow(label: l10n.description, value: skill.description),
-            if (skill.stars > 0)
-              _SkillDetailRow(label: 'Stars', value: skill.stars.toString()),
-            _SkillDetailRow(
-              label: l10n.path,
-              value: skill.installedPath?.isNotEmpty == true
-                  ? skill.installedPath!
-                  : skill.source,
-            ),
-            const Divider(),
-            Text(
-              'SKILL.md',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: color.onSurfaceVariant,
+            // 顶部栏：标题与关闭按钮
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        skill.name,
+                        style: textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'by ${skill.author}',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: color.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 20,
+                  color: color.onSurfaceVariant,
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 24),
+
+            // Skill Description 部分
+            Row(
+              children: [
+                Icon(Icons.auto_awesome_outlined,
+                    size: 18, color: color.onSurface),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.description,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              skill.description,
+              style: textTheme.bodyMedium?.copyWith(
+                color: color.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // SKILL.md 内容部分
+            Row(
+              children: [
+                Icon(Icons.article_outlined, size: 18, color: color.onSurface),
+                const SizedBox(width: 8),
+                Text(
+                  'SKILL.md',
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             Expanded(
               child: Container(
-                padding: const EdgeInsets.all(12),
                 width: double.infinity,
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: color.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: color.outlineVariant.withValues(alpha: 0.5),
+                    color: color.outlineVariant.withValues(alpha: 0.3),
                   ),
                 ),
                 child: FutureBuilder<String>(
@@ -886,56 +1052,84 @@ class _SkillDetailDialog extends StatelessWidget {
                       return const Center(child: CircularProgressIndicator());
                     }
                     return SingleChildScrollView(
-                      child: SelectableText(
-                        snapshot.data ?? '',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontFamily: 'monospace',
-                            ),
+                      child: SelectionArea(
+                        child: Text(
+                          snapshot.data ?? '',
+                          style: textTheme.bodySmall?.copyWith(
+                            fontFamily: 'monospace',
+                            height: 1.4,
+                          ),
+                        ),
                       ),
                     );
                   },
                 ),
               ),
             ),
+            // 本地路径信息
+            if (skill.installedPath != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  '${l10n.path}: ${skill.installedPath}',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: color.onSurfaceVariant.withValues(alpha: 0.5),
+                    fontSize: 10,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
-      actions: <Widget>[
-        FilledButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.close),
-        ),
-      ],
     );
   }
 }
 
-class _SkillDetailRow extends StatelessWidget {
-  const _SkillDetailRow({
-    required this.label,
-    required this.value,
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.isDanger = false,
+    this.isDisabled = false,
   });
 
-  final String label;
-  final String value;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final bool isDanger;
+  final bool isDisabled;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          const SizedBox(height: 4),
-          SelectableText(
-            value.trim().isEmpty ? '无' : value.trim().replaceAll(r'\n', '\n'),
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ],
+    final ColorScheme color = Theme.of(context).colorScheme;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: isDisabled
+            ? (isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05))
+            : (isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : color.surfaceContainerLow),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: IconButton(
+        onPressed: isDisabled ? null : onPressed,
+        tooltip: tooltip,
+        iconSize: 18,
+        padding: EdgeInsets.zero,
+        splashRadius: 18,
+        icon: Icon(
+          icon,
+          color: isDisabled
+              ? color.onSurface.withValues(alpha: 0.3)
+              : (isDanger ? color.error : color.onSurfaceVariant),
+        ),
       ),
     );
   }

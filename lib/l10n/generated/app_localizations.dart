@@ -401,7 +401,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchHint.
   ///
   /// In en, this message translates to:
-  /// **'Semantic search, e.g.: SKILL for front-end development'**
+  /// **'Search skills, press ↵ to search'**
   String get searchHint;
 
   /// No description provided for @skillsmpSettings.

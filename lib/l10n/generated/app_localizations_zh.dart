@@ -12,13 +12,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => 'Skill Lake';
 
   @override
-  String get menuSkill => 'Skill';
+  String get menuSkill => '技能';
 
   @override
-  String get menuAgent => 'Agent';
+  String get menuAgent => '智能体';
 
   @override
-  String get menuStore => 'Store';
+  String get menuStore => '商店';
 
   @override
   String get about => '关于';
@@ -30,22 +30,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homepage => '主页';
 
   @override
-  String get noEnabledAgentHint => '没有启用中的 Agent，请在「Agent 管理」中至少开启一个。';
+  String get noEnabledAgentHint => '没有启用中的智能体，请在「智能体管理」中至少开启一个。';
 
   @override
-  String get addCustomAgent => '添加自定义 Agent';
+  String get addCustomAgent => '添加自定义智能体';
 
   @override
-  String get editCustomAgent => '编辑自定义 Agent';
+  String get editCustomAgent => '编辑自定义智能体';
 
   @override
-  String get deleteCustomAgent => '删除自定义 Agent';
+  String get deleteCustomAgent => '删除自定义智能体';
 
   @override
-  String get agentName => 'Agent 名称';
+  String get agentName => '智能体名称';
 
   @override
-  String get skillsDirectory => 'Skill 目录';
+  String get skillsDirectory => '技能目录';
 
   @override
   String get cancel => '取消';
@@ -69,13 +69,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get edit => '编辑';
 
   @override
-  String get setDefaultAgent => '设为默认 Agent';
+  String get setDefaultAgent => '设为默认智能体';
 
   @override
-  String get currentDefaultAgent => '当前默认 Agent';
+  String get currentDefaultAgent => '当前默认智能体';
 
   @override
-  String get syncFromDefault => '从默认 Agent 同步';
+  String get syncFromDefault => '从默认智能体同步';
 
   @override
   String get syncAllTo => '全部同步到...';
@@ -84,7 +84,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncTo => '同步到...';
 
   @override
-  String get selectTargetAgent => '选择同步到的目标 Agent';
+  String get selectTargetAgent => '选择同步到的目标智能体';
 
   @override
   String get uploadInstall => '上传安装';
@@ -93,7 +93,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get refresh => '刷新';
 
   @override
-  String get noInstalledSkill => '暂无已安装 Skill';
+  String get noInstalledSkill => '暂无已安装技能';
 
   @override
   String totalCount(int count) {
@@ -107,7 +107,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get confirmDeleteAll => '确认全部删除';
 
   @override
-  String get confirmDeleteAllContent => '确定要删除该 Agent 下的所有 Skill 吗？\n此操作将不可恢复。';
+  String get confirmDeleteAllContent => '确定要删除该智能体下的所有技能吗？\n此操作将不可恢复。';
 
   @override
   String get confirmDelete => '确认删除';
@@ -141,7 +141,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get noMatchSkill => '没有找到符合条件的 Skill';
+  String get noMatchSkill => '没有找到符合条件的技能';
 
   @override
   String get installing => '安装中...';
@@ -169,7 +169,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get searchHint => '支持语义搜索，例如：最适合前端开发的SKILL';
+  String get searchHint => '搜索技能，按 ↵ 搜索';
 
   @override
   String get skillsmpSettings => 'Skillsmp 设置';

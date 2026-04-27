@@ -634,24 +634,35 @@ class SkillService {
 
         try {
           final String content = await skillMd.readAsString();
-          final Map<String, String> frontmatter =
-              _parseYamlFrontmatter(content);
+          final Map<String, String> metadata = _parseYamlFrontmatter(content);
 
-          if (frontmatter.containsKey('description')) {
-            description = frontmatter['description'] ?? '';
+          // 如果 metadata 中没有 usage_examples，尝试从正文中提取 ## Usage 之后的内容
+          if (!metadata.containsKey('usage_examples')) {
+            final RegExp usageRegex =
+                RegExp(r'##\s*Usage\s*\n([\s\S]*?)(?=\n##|$)');
+            final Match? match = usageRegex.firstMatch(content);
+            if (match != null) {
+              final String usageContent = match.group(1)?.trim() ?? '';
+              if (usageContent.isNotEmpty) {
+                metadata['usage_examples'] = usageContent;
+              }
+            }
           }
-          if (frontmatter.containsKey('version') ||
-              frontmatter.containsKey('v')) {
-            version = frontmatter['version'] ?? frontmatter['v'] ?? 'local';
+
+          if (metadata.containsKey('description')) {
+            description = metadata['description'] ?? '';
           }
-          if (frontmatter.containsKey('author')) {
-            author = frontmatter['author'] ?? 'local';
+          if (metadata.containsKey('version') || metadata.containsKey('v')) {
+            version = metadata['version'] ?? metadata['v'] ?? 'local';
           }
-          if (frontmatter.containsKey('name')) {
-            name = frontmatter['name'] ?? basename;
+          if (metadata.containsKey('author')) {
+            author = metadata['author'] ?? 'local';
           }
-          if (frontmatter.containsKey('source')) {
-            source = frontmatter['source'];
+          if (metadata.containsKey('name')) {
+            name = metadata['name'] ?? basename;
+          }
+          if (metadata.containsKey('source')) {
+            source = metadata['source'];
           }
 
           // 使用真实绝对路径，确保展示路径与磁盘路径完全一致
@@ -667,7 +678,7 @@ class SkillService {
               author: author,
               source: source ?? 'auto:$root',
               installedPath: realPath,
-              metadata: frontmatter,
+              metadata: metadata,
             ),
           );
         } catch (_) {}
