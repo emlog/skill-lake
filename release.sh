@@ -33,7 +33,8 @@ echo "🏗️ Building Flutter macOS in release mode..."
 flutter build macos --release || error_exit "Build failed"
 
 APP_PATH="build/macos/Build/Products/Release/Skill Lake.app"
-DMG_NAME="SkillLake-${VERSION}.dmg"
+ARCH=$(uname -m)
+DMG_NAME="skill-lake-${VERSION}-${ARCH}.dmg"
 
 if [ ! -d "$APP_PATH" ]; then
     error_exit "App build failed or path not found at $APP_PATH"
@@ -91,9 +92,10 @@ echo "🐙 Creating GitHub Release..."
 gh release view "${VERSION}" >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   echo "Release ${VERSION} already exists. Overwriting asset..."
+  gh release edit "${VERSION}" --title "v${VERSION}"
   gh release upload "${VERSION}" "$DMG_NAME" --clobber
 else
-  gh release create "${VERSION}" "$DMG_NAME" --title "Skill Lake ${VERSION}" --notes "Release version ${VERSION}"
+  gh release create "${VERSION}" "$DMG_NAME" --title "v${VERSION}" --notes "Release version ${VERSION}"
 fi
 
 # 8. Update Homebrew Tap

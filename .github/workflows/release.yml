@@ -1,0 +1,127 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # 1. 编译 Windows 版本 (.exe 安装包)
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Enable Windows Support
+        run: flutter config --enable-windows-desktop
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Build Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $VERSION = (Get-Content pubspec.yaml | Select-String "version: " | ForEach-Object { $_.ToString().Split(": ")[1].Split("+")[0] })
+          # 修改 .iss 文件中的版本号
+          (Get-Content windows/installer.iss) -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$VERSION`"" | Set-Content windows/installer.iss
+          # 运行 Inno Setup 编译器
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows/installer.iss
+          # 重命名输出文件
+          Move-Item windows/skill-lake-windows-setup.exe "skill-lake-$VERSION-windows-x64.exe"
+
+      - name: Upload Windows Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: skill-lake-*-windows-x64.exe
+          name: v${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 2. 编译 macOS (arm64) 版本并更新 Homebrew
+  build-macos-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build macOS
+        run: flutter build macos --release
+
+      - name: Create DMG
+        run: |
+          VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
+          ARCH="arm64"
+          DMG_NAME="skill-lake-${VERSION}-${ARCH}.dmg"
+          APP_PATH="build/macos/Build/Products/Release/Skill Lake.app"
+          
+          mkdir -p dmg_staging
+          cp -R "$APP_PATH" dmg_staging/
+          ln -s /Applications dmg_staging/Applications
+          hdiutil create -volname "Skill Lake" -srcfolder dmg_staging -ov -format UDZO "$DMG_NAME"
+          
+          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')" >> $GITHUB_ENV
+
+      - name: Upload macOS Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.DMG_NAME }}
+          name: v${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Tap
+        run: |
+          TAP_REPO="emlog/homebrew-skill-lake"
+          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$TAP_REPO.git" tap-repo
+          mkdir -p tap-repo/Casks
+          
+          cat <<EOF > tap-repo/Casks/skill-lake.rb
+          cask "skill-lake" do
+            version "${{ env.VERSION }}"
+            sha256 "${{ env.SHA }}"
+
+            url "https://github.com/emlog/skill-lake/releases/download/${{ env.VERSION }}/${{ env.DMG_NAME }}"
+            name "Skill Lake"
+            desc "A local AI agent skill manager app for macOS"
+            homepage "https://github.com/emlog/skill-lake"
+
+            app "Skill Lake.app"
+
+            zap trash: [
+              "~/Library/Application Support/com.emlog.skillLake",
+              "~/Library/Preferences/com.emlog.skillLake.plist",
+              "~/Library/Saved Application State/com.emlog.skillLake.savedState",
+            ]
+          end
+          EOF
+          
+          cd tap-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/skill-lake.rb
+          git commit -m "update skill-lake to ${{ env.VERSION }}" || echo "No changes to commit"
+          git push origin main
