@@ -26,6 +26,8 @@ fi
 # Extract version from pubspec.yaml
 VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
 [ -z "$VERSION" ] && error_exit "Could not extract version from pubspec.yaml"
+# Strip 'v' prefix if present for uniform handling
+VERSION=${VERSION#v}
 echo "✅ Version to release: $VERSION"
 
 # 3. Build the app
@@ -63,7 +65,7 @@ cask "skill-lake" do
   version "${VERSION}"
   sha256 "${SHA}"
 
-  url "https://github.com/emlog/skill-lake/releases/download/${VERSION}/${DMG_NAME}"
+  url "https://github.com/emlog/skill-lake/releases/download/v${VERSION}/${DMG_NAME}"
   name "Skill Lake"
   desc "A local AI agent skill manager app for macOS"
   homepage "https://github.com/emlog/skill-lake"
@@ -82,20 +84,20 @@ EOF
 echo "🚀 Committing and Tagging in Git..."
 git add pubspec.yaml
 git add Casks/skill-lake.rb
-git diff --cached --quiet || git commit -m "chore: release ${VERSION}"
-git tag -f "${VERSION}"
+git diff --cached --quiet || git commit -m "chore: release v${VERSION}"
+git tag -f "v${VERSION}"
 git push origin main
-git push origin "${VERSION}" -f
+git push origin "v${VERSION}" -f
 
 # 7. GitHub Release
 echo "🐙 Creating GitHub Release..."
-gh release view "${VERSION}" >/dev/null 2>&1
+gh release view "v${VERSION}" >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   echo "Release ${VERSION} already exists. Overwriting asset..."
-  gh release edit "${VERSION}" --title "v${VERSION}"
-  gh release upload "${VERSION}" "$DMG_NAME" --clobber
+  gh release edit "v${VERSION}" --title "v${VERSION}"
+  gh release upload "v${VERSION}" "$DMG_NAME" --clobber
 else
-  gh release create "${VERSION}" "$DMG_NAME" --title "v${VERSION}" --notes "Release version ${VERSION}"
+  gh release create "v${VERSION}" "$DMG_NAME" --title "v${VERSION}" --notes "Release version ${VERSION}"
 fi
 
 # 8. Update Homebrew Tap
@@ -114,7 +116,7 @@ cask "skill-lake" do
   version "${VERSION}"
   sha256 "${SHA}"
 
-  url "https://github.com/emlog/skill-lake/releases/download/${VERSION}/${DMG_NAME}"
+  url "https://github.com/emlog/skill-lake/releases/download/v${VERSION}/${DMG_NAME}"
   name "Skill Lake"
   desc "A local AI agent skill manager app for macOS"
   homepage "https://github.com/emlog/skill-lake"

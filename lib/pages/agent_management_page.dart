@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
+import '../widgets/action_button.dart';
 import '../l10n/generated/app_localizations.dart';
 
 import '../models/agent_target.dart';
@@ -28,19 +30,19 @@ class AgentManagementPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.only(right: 16),
+          padding: const EdgeInsets.only(right: 16, top: 4, bottom: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: <Widget>[
-              IconButton(
-                icon: const Icon(Icons.add),
+              ActionButton(
+                icon: Icons.add,
                 tooltip: l10n.addCustomAgent,
                 onPressed: () => _showAddAgentDialog(context, l10n),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -61,7 +63,7 @@ class AgentManagementPage extends StatelessWidget {
                 onSetDefault: item.isDefault
                     ? null // 已是默认则禁用按钮
                     : () => onDefaultAgentChanged(item.id),
-                onEdit: () => _editCustomAgent(context, index, item, l10n),
+                onEdit: () => _editAgent(context, index, item, l10n),
                 onDelete: () => _deleteCustomAgent(context, index, item, l10n),
               );
             },
@@ -74,39 +76,100 @@ class AgentManagementPage extends StatelessWidget {
   void _showAddAgentDialog(BuildContext context, AppLocalizations l10n) {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController dirController = TextEditingController();
+    final ColorScheme color = Theme.of(context).colorScheme;
 
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: Text(l10n.addCustomAgent),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: l10n.agentName,
-                  hintText: '例如：My Custom Agent',
+          title: Text(l10n.addCustomAgent,
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: l10n.agentName,
+                    hintText: '例如：My Custom Agent',
+                    filled: true,
+                    fillColor: color.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: color.outlineVariant.withValues(alpha: 0.5)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: color.outlineVariant.withValues(alpha: 0.5)),
+                    ),
+                    isDense: true,
+                  ),
+                  autofocus: true,
                 ),
-                autofocus: true,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: dirController,
-                decoration: InputDecoration(
-                  labelText: l10n.skillsDirectory,
-                  hintText: '例如：~/.myagent/skills/',
+                const SizedBox(height: 24),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: dirController,
+                        decoration: InputDecoration(
+                          labelText: l10n.skillsDirectory,
+                          hintText: '例如：~/.myagent/skills/',
+                          filled: true,
+                          fillColor: color.surfaceContainerLow,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                                color: color.outlineVariant
+                                    .withValues(alpha: 0.5)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                                color: color.outlineVariant
+                                    .withValues(alpha: 0.5)),
+                          ),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ActionButton(
+                      icon: Icons.folder_open,
+                      tooltip: '选择目录',
+                      size: 42,
+                      onPressed: () async {
+                        final String? result =
+                            await FilePicker.platform.getDirectoryPath();
+                        if (result != null) {
+                          dirController.text = result;
+                        }
+                      },
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(l10n.cancel),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(l10n.cancel),
+              ),
             ),
+            const SizedBox(width: 4),
             FilledButton(
               onPressed: () {
                 final String name = nameController.text.trim();
@@ -124,6 +187,13 @@ class AgentManagementPage extends StatelessWidget {
                   Navigator.of(dialogContext).pop();
                 }
               },
+              style: FilledButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               child: Text(l10n.add),
             ),
           ],
@@ -132,53 +202,130 @@ class AgentManagementPage extends StatelessWidget {
     );
   }
 
-  void _editCustomAgent(BuildContext context, int index, AgentTarget agent,
+  void _editAgent(BuildContext context, int index, AgentTarget agent,
       AppLocalizations l10n) {
+    final bool isCustom = agent.id.startsWith('custom_');
     final TextEditingController nameController =
         TextEditingController(text: agent.displayName);
     final TextEditingController dirController =
-        TextEditingController(text: agent.skillsDirectory);
+        TextEditingController(text: agent.skillsDirectory ?? '');
+    final ColorScheme color = Theme.of(context).colorScheme;
 
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: Text(l10n.editCustomAgent),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(labelText: l10n.agentName),
-                autofocus: true,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: dirController,
-                decoration: InputDecoration(labelText: l10n.skillsDirectory),
-              ),
-            ],
+          title: Text(isCustom ? l10n.editCustomAgent : '编辑 Agent',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: l10n.agentName,
+                    filled: true,
+                    fillColor: isCustom
+                        ? color.surfaceContainerLow
+                        : color.surfaceContainerHigh,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: color.outlineVariant.withValues(alpha: 0.5)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: color.outlineVariant.withValues(alpha: 0.5)),
+                    ),
+                    isDense: true,
+                  ),
+                  readOnly: !isCustom,
+                  autofocus: isCustom,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: dirController,
+                        decoration: InputDecoration(
+                          labelText: l10n.skillsDirectory,
+                          filled: true,
+                          fillColor: color.surfaceContainerLow,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                                color: color.outlineVariant
+                                    .withValues(alpha: 0.5)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                                color: color.outlineVariant
+                                    .withValues(alpha: 0.5)),
+                          ),
+                          isDense: true,
+                        ),
+                        autofocus: !isCustom,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ActionButton(
+                      icon: Icons.folder_open,
+                      tooltip: '选择目录',
+                      size: 42,
+                      onPressed: () async {
+                        final String? result =
+                            await FilePicker.platform.getDirectoryPath();
+                        if (result != null) {
+                          dirController.text = result;
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(l10n.cancel),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(l10n.cancel),
+              ),
             ),
+            const SizedBox(width: 4),
             FilledButton(
               onPressed: () {
                 final String name = nameController.text.trim();
                 final String dir = dirController.text.trim();
-                if (name.isNotEmpty && dir.isNotEmpty) {
+                if (name.isNotEmpty) {
                   final List<AgentTarget> updated = <AgentTarget>[...agents];
                   updated[index] = agent.copyWith(
-                    displayName: name,
-                    skillsDirectory: dir,
+                    displayName: isCustom ? name : agent.displayName,
+                    skillsDirectory: dir.isNotEmpty ? dir : null,
                   );
                   onAgentsChanged(updated);
                   Navigator.of(dialogContext).pop();
                 }
               },
+              style: FilledButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               child: Text(l10n.save),
             ),
           ],
@@ -194,16 +341,25 @@ class AgentManagementPage extends StatelessWidget {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text(l10n.deleteCustomAgent),
-          content: Text(l10n.confirmDeleteContent(agent.displayName)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: SizedBox(
+            width: 320,
+            child: Text(l10n.confirmDeleteContent(agent.displayName)),
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(l10n.cancel),
             ),
+            const SizedBox(width: 8),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error,
                 foregroundColor: Theme.of(context).colorScheme.onError,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () {
                 final List<AgentTarget> updated = <AgentTarget>[...agents];
@@ -324,44 +480,43 @@ class _AgentCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // 编辑/删除按钮（仅限自定义Agent）
+              const SizedBox(width: 8),
+              // 删除按钮（仅限自定义 Agent）
               if (agent.id.startsWith('custom_')) ...[
-                Tooltip(
-                  message: l10n.edit,
-                  child: IconButton(
-                    onPressed: onEdit,
-                    iconSize: 20,
-                    icon: Icon(Icons.edit_outlined,
-                        color: color.onSurfaceVariant),
-                  ),
+                ActionButton(
+                  onPressed: onDelete,
+                  icon: Icons.delete_outline,
+                  tooltip: l10n.delete,
+                  isDanger: true,
+                  size: 32,
+                  iconSize: 18,
                 ),
-                Tooltip(
-                  message: l10n.delete,
-                  child: IconButton(
-                    onPressed: onDelete,
-                    iconSize: 20,
-                    icon: Icon(Icons.delete_outline, color: color.error),
-                  ),
-                ),
+                const SizedBox(width: 8),
               ],
-              // 设为默认按钮
-              Tooltip(
-                message:
-                    isDefault ? l10n.currentDefaultAgent : l10n.setDefaultAgent,
-                child: IconButton(
-                  onPressed: onSetDefault,
-                  iconSize: 20,
-                  icon: Icon(
-                    isDefault ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: isDefault
-                        ? color.primary
-                        : color.onSurfaceVariant.withValues(alpha: 0.5),
-                  ),
-                ),
+              // 编辑按钮（所有 Agent 都有）
+              ActionButton(
+                onPressed: onEdit,
+                icon: Icons.edit_outlined,
+                tooltip: l10n.edit,
+                size: 32,
+                iconSize: 18,
               ),
+              const SizedBox(width: 8),
+              // 设为默认按钮
+              ActionButton(
+                onPressed: onSetDefault,
+                icon:
+                    isDefault ? Icons.star_rounded : Icons.star_border_rounded,
+                tooltip:
+                    isDefault ? l10n.currentDefaultAgent : l10n.setDefaultAgent,
+                size: 32,
+                iconSize: 20,
+                iconColor: isDefault ? color.primary : null,
+              ),
+              const SizedBox(width: 12),
               // 启用/禁用开关
               Transform.scale(
-                scale: 0.85,
+                scale: 0.8,
                 child: Switch(
                   value: agent.enabled,
                   onChanged: onToggleEnabled,

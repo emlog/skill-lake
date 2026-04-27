@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../widgets/action_button.dart';
 import '../l10n/generated/app_localizations.dart';
 
 import '../models/agent_target.dart';
@@ -288,26 +289,26 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (widget.agents.length > 1) ...<Widget>[
-                    _ActionButton(
+                    ActionButton(
                       icon: Icons.sync_alt_outlined,
                       tooltip: l10n.syncAllTo,
                       onPressed: () => _onSyncAll(l10n),
                     ),
                     const SizedBox(width: 8),
                   ],
-                  _ActionButton(
+                  ActionButton(
                     icon: Icons.upload_outlined,
                     tooltip: l10n.uploadInstall,
                     onPressed: _onUploadInstall,
                   ),
                   const SizedBox(width: 8),
-                  _ActionButton(
+                  ActionButton(
                     icon: Icons.refresh_rounded,
                     tooltip: l10n.refresh,
                     onPressed: _loadSkills,
                   ),
                   const SizedBox(width: 8),
-                  _ActionButton(
+                  ActionButton(
                     icon: Icons.delete_sweep_outlined,
                     tooltip: l10n.deleteAll,
                     onPressed:
@@ -1079,56 +1080,6 @@ class _SkillDetailDialog extends StatelessWidget {
                 ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.isDanger = false,
-    this.isDisabled = false,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final bool isDanger;
-  final bool isDisabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme color = Theme.of(context).colorScheme;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: isDisabled
-            ? (isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.05))
-            : (isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : color.surfaceContainerLow),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: IconButton(
-        onPressed: isDisabled ? null : onPressed,
-        tooltip: tooltip,
-        iconSize: 18,
-        padding: EdgeInsets.zero,
-        splashRadius: 18,
-        icon: Icon(
-          icon,
-          color: isDisabled
-              ? color.onSurface.withValues(alpha: 0.3)
-              : (isDanger ? color.error : color.onSurfaceVariant),
         ),
       ),
     );

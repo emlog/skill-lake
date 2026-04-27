@@ -58,9 +58,9 @@ class AgentService {
           agents[index] = existing.copyWith(
             displayName: builtIn.displayName,
             icon: builtIn.icon,
-            homepageUrl: builtIn.homepageUrl ?? existing.homepageUrl,
+            homepageUrl: existing.homepageUrl ?? builtIn.homepageUrl,
             skillsDirectory:
-                builtIn.skillsDirectory ?? existing.skillsDirectory,
+                existing.skillsDirectory ?? builtIn.skillsDirectory,
           );
         }
       }
