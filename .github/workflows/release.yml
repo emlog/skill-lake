@@ -114,11 +114,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Homebrew Tap
-        # 修正语法错误：if 条件中不需要外层的 ${{ }}
-        if: secrets.RELEASE_TOKEN != ''
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        if: env.RELEASE_TOKEN != ''
         run: |
           TAP_REPO="emlog/homebrew-skill-lake"
-          git clone "https://x-access-token:${{ secrets.RELEASE_TOKEN }}@github.com/$TAP_REPO.git" tap-repo
+          git clone "https://x-access-token:${RELEASE_TOKEN}@github.com/$TAP_REPO.git" tap-repo
           mkdir -p tap-repo/Casks
           
           cat <<EOF > tap-repo/Casks/skill-lake.rb
