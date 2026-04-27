@@ -34,12 +34,27 @@ jobs:
         shell: pwsh
         run: |
           $VERSION = (Get-Content pubspec.yaml | Select-String "version: " | ForEach-Object { $_.ToString().Split(": ")[1].Split("+")[0] })
-          # 修改 .iss 文件中的版本号
+          Write-Host "Detected Version: $VERSION"
+          
+          # 更新 .iss 文件中的版本号
           (Get-Content windows/installer.iss) -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$VERSION`"" | Set-Content windows/installer.iss
-          # 运行 Inno Setup 编译器
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows/installer.iss
-          # 重命名输出文件
-          Move-Item windows/skill-lake-windows-setup.exe "skill-lake-$VERSION-windows-x64.exe"
+          
+          # 检查编译产物是否存在
+          if (-not (Test-Path "build\windows\x64\runner\Release\skill_lake.exe")) {
+              Write-Error "Flutter build output not found!"
+              exit 1
+          }
+
+          # 运行 Inno Setup 编译器 (ISCC 应该已经在 PATH 中)
+          & iscc windows/installer.iss
+          
+          # 检查生成的安装包并重命名
+          if (Test-Path "windows\skill-lake-windows-setup.exe") {
+              Move-Item windows\skill-lake-windows-setup.exe "skill-lake-$VERSION-windows-x64.exe"
+          } else {
+              Write-Error "Installer was not generated!"
+              exit 1
+          }
 
       - name: Upload Windows Asset
         uses: softprops/action-gh-release@v2
@@ -75,6 +90,11 @@ jobs:
           DMG_NAME="skill-lake-${VERSION}-${ARCH}.dmg"
           APP_PATH="build/macos/Build/Products/Release/Skill Lake.app"
           
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Error: App build not found at $APP_PATH"
+            exit 1
+          fi
+
           mkdir -p dmg_staging
           cp -R "$APP_PATH" dmg_staging/
           ln -s /Applications dmg_staging/Applications
@@ -94,9 +114,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Homebrew Tap
+        # 只有当用户配置了 RELEASE_TOKEN 时才运行，避免任务因为权限问题报错
+        if: "${{ secrets.RELEASE_TOKEN != '' }}"
         run: |
           TAP_REPO="emlog/homebrew-skill-lake"
-          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$TAP_REPO.git" tap-repo
+          git clone "https://x-access-token:${{ secrets.RELEASE_TOKEN }}@github.com/$TAP_REPO.git" tap-repo
           mkdir -p tap-repo/Casks
           
           cat <<EOF > tap-repo/Casks/skill-lake.rb
@@ -104,7 +126,7 @@ jobs:
             version "${{ env.VERSION }}"
             sha256 "${{ env.SHA }}"
 
-            url "https://github.com/emlog/skill-lake/releases/download/${{ env.VERSION }}/${{ env.DMG_NAME }}"
+            url "https://github.com/emlog/skill-lake/releases/download/v${{ env.VERSION }}/${{ env.DMG_NAME }}"
             name "Skill Lake"
             desc "A local AI agent skill manager app for macOS"
             homepage "https://github.com/emlog/skill-lake"

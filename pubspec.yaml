@@ -1,7 +1,7 @@
 name: skill_lake
 description: A local AI agent skill manager app for macOS, built with Flutter.
 publish_to: "none"
-version: 1.2.1
+version: 1.2.2
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
