@@ -82,11 +82,22 @@ EOF
 
 # 6. Git Operations
 echo "🚀 Committing and Tagging in Git..."
-git add pubspec.yaml
-git add Casks/skill-lake.rb
-git diff --cached --quiet || git commit -m "chore: release v${VERSION}"
+git add .
+# Check if there are changes to commit
+if ! git diff --cached --quiet; then
+    git commit -m "chore: release v${VERSION}"
+else
+    echo "⚠️ No changes to commit"
+fi
+
+# Tag the release
+echo "🏷️ Tagging version v${VERSION}..."
 git tag -f "v${VERSION}"
-git push origin main
+
+# Push changes and tags
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "📤 Pushing to origin ${CURRENT_BRANCH}..."
+git push origin "${CURRENT_BRANCH}"
 git push origin "v${VERSION}" -f
 
 # 7. GitHub Release

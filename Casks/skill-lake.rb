@@ -1,8 +1,8 @@
 cask "skill-lake" do
-  version "1.2.7"
-  sha256 "aee866b8aecd2d245096f80c653f59c2caaee111d2544ff8d297f307476deb32"
+  version "1.2.8"
+  sha256 "a800bafea7aeca70473ef3b8565af0a5e9e60b2866ae846738b03997f7893d1a"
 
-  url "https://github.com/emlog/skill-lake/releases/download/v1.2.7/skill-lake-1.2.7-arm64.dmg"
+  url "https://github.com/emlog/skill-lake/releases/download/v1.2.8/skill-lake-1.2.8-arm64.dmg"
   name "Skill Lake"
   desc "A local AI agent skill manager app for macOS"
   homepage "https://github.com/emlog/skill-lake"
