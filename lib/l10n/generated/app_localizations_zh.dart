@@ -81,10 +81,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncAllTo => '全部同步到...';
 
   @override
+  String get syncSelected => '同步选中项';
+
+  @override
   String get syncTo => '同步到...';
 
   @override
   String get selectTargetAgent => '选择同步到的目标智能体';
+
+  @override
+  String get openFolder => '打开目录';
+
+  @override
+  String get selectSkill => '选择技能';
 
   @override
   String get uploadInstall => '上传安装';

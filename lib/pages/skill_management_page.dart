@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../widgets/action_button.dart';
 import '../l10n/generated/app_localizations.dart';
 
@@ -531,6 +532,13 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                                     color: color.onSurfaceVariant,
                                   ),
                                 IconButton(
+                                  tooltip: l10n.openFolder,
+                                  iconSize: 20,
+                                  onPressed: () => _onOpenFolder(skill),
+                                  icon: const Icon(Icons.folder_open_outlined),
+                                  color: color.onSurfaceVariant,
+                                ),
+                                IconButton(
                                   tooltip: l10n.view,
                                   iconSize: 20,
                                   onPressed: () => _onView(skill, l10n),
@@ -776,6 +784,27 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       builder: (BuildContext context) =>
           _SkillDetailDialog(skill: skill, l10n: l10n),
     );
+  }
+
+  Future<void> _onOpenFolder(Skill skill) async {
+    final String? path = skill.installedPath;
+    if (path == null || path.isEmpty) {
+      SnackbarUtil.show(context, '该技能没有安装路径', isSuccess: false);
+      return;
+    }
+
+    final Uri uri = Uri.directory(path);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        // Fallback for some systems where canLaunchUrl might fail for directories
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      SnackbarUtil.show(context, '无法打开目录：$e', isSuccess: false);
+    }
   }
 }
 

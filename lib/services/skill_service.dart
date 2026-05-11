@@ -346,23 +346,25 @@ class SkillService {
     required AgentTarget sourceAgent,
     required AgentTarget targetAgent,
   }) async {
-    // 不允许同步给自身
-    if (sourceAgent.id == targetAgent.id) {
-      return 0;
-    }
-
     final List<Skill> sourceSkills =
         await getInstalledSkillsForAgent(sourceAgent);
-    if (sourceSkills.isEmpty) {
-      return 0;
-    }
+    return syncSkills(
+      skills: sourceSkills,
+      targetAgent: targetAgent,
+    );
+  }
+
+  /// 将指定的 [skills] 列表物理复制到目标 Agent（[targetAgent]）。
+  Future<int> syncSkills({
+    required List<Skill> skills,
+    required AgentTarget targetAgent,
+  }) async {
+    if (skills.isEmpty) return 0;
 
     final List<String> homes = _homeCandidates();
-    if (homes.isEmpty) {
-      return 0;
-    }
+    if (homes.isEmpty) return 0;
 
-    // 确定目标 Agent 的首选存放目录（取第一个 home 的第一个 root）
+    // 确定目标 Agent 的首选存放目录
     final String targetRoot = _primaryDiscoveryRoot(targetAgent, homes.first);
     final Directory targetRootDir = Directory(targetRoot);
     if (!await targetRootDir.exists()) {
@@ -370,7 +372,9 @@ class SkillService {
     }
 
     int syncedCount = 0;
-    for (final Skill skill in sourceSkills) {
+    for (final Skill skill in skills) {
+      if (skill.agentId == targetAgent.id) continue;
+
       final String? path = skill.installedPath;
       if (path == null || path.isEmpty) continue;
 
@@ -380,12 +384,10 @@ class SkillService {
       final String skillName = _baseName(srcDir.path);
       final Directory destDir = Directory('${targetRootDir.path}/$skillName');
 
-      // 若目标已存在同名文件夹，先删除再复制（覆盖语义）
       if (await destDir.exists()) {
         await destDir.delete(recursive: true);
       }
 
-      // 递归复制 Skill 文件夹到目标 Agent 目录
       await _copySkillDir(srcDir, destDir);
       syncedCount++;
     }
@@ -869,7 +871,7 @@ class SkillService {
     return builtin[agent.id] ?? const <String>[];
   }
 
-  /// 安全列出 [dir] 下所有直接子目录（含符号链接指向的目录）。
+  /// 安全列出 [dir] 下所有直接子目录。
   /// 权限错误时记录到 [permissionDeniedPaths] 并继续。
   Future<List<Directory>> _listDirsSafe(
     Directory dir, {
@@ -878,15 +880,9 @@ class SkillService {
     final List<Directory> results = <Directory>[];
     try {
       await for (final FileSystemEntity entity
-          in dir.list(recursive: false, followLinks: true)) {
+          in dir.list(recursive: false, followLinks: false)) {
         if (entity is Directory) {
           results.add(entity);
-        } else if (entity is Link) {
-          final String targetPath = await entity.resolveSymbolicLinks();
-          final Directory target = Directory(targetPath);
-          if (await target.exists()) {
-            results.add(target);
-          }
         }
       }
     } catch (err) {
@@ -907,7 +903,7 @@ class SkillService {
     final List<File> results = <File>[];
     try {
       await for (final FileSystemEntity entity
-          in dir.list(recursive: false, followLinks: true)) {
+          in dir.list(recursive: false, followLinks: false)) {
         if (entity is File) {
           results.add(entity);
         }

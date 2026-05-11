@@ -82,10 +82,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncAllTo => 'Sync All to...';
 
   @override
+  String get syncSelected => 'Sync Selected';
+
+  @override
   String get syncTo => 'Sync to...';
 
   @override
   String get selectTargetAgent => 'Select target Agent to sync to';
+
+  @override
+  String get openFolder => 'Open Folder';
+
+  @override
+  String get selectSkill => 'Select Skill';
 
   @override
   String get uploadInstall => 'Upload Install';

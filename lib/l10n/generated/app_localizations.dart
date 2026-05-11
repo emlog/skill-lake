@@ -242,6 +242,12 @@ abstract class AppLocalizations {
   /// **'Sync All to...'**
   String get syncAllTo;
 
+  /// No description provided for @syncSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync Selected'**
+  String get syncSelected;
+
   /// No description provided for @syncTo.
   ///
   /// In en, this message translates to:
@@ -253,6 +259,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select target Agent to sync to'**
   String get selectTargetAgent;
+
+  /// No description provided for @openFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Folder'**
+  String get openFolder;
+
+  /// No description provided for @selectSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Skill'**
+  String get selectSkill;
 
   /// No description provided for @uploadInstall.
   ///
