@@ -29,7 +29,7 @@
   "selectTargetAgent": "Select target Agent to sync to",
   "openFolder": "Open Folder",
   "selectSkill": "Select Skill",
-  "uploadInstall": "Upload Install",
+  "uploadInstall": "Upload Install (.zip)",
   "refresh": "Refresh",
   "noInstalledSkill": "No installed skills",
   "totalCount": "Total {count}",

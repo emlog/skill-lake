@@ -96,7 +96,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get selectSkill => '选择技能';
 
   @override
-  String get uploadInstall => '上传安装';
+  String get uploadInstall => '上传安装（.zip）';
 
   @override
   String get refresh => '刷新';

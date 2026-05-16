@@ -275,7 +275,7 @@ abstract class AppLocalizations {
   /// No description provided for @uploadInstall.
   ///
   /// In en, this message translates to:
-  /// **'Upload Install'**
+  /// **'Upload Install (.zip)'**
   String get uploadInstall;
 
   /// No description provided for @refresh.

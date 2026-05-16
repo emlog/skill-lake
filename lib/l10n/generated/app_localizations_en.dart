@@ -97,7 +97,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectSkill => 'Select Skill';
 
   @override
-  String get uploadInstall => 'Upload Install';
+  String get uploadInstall => 'Upload Install (.zip)';
 
   @override
   String get refresh => 'Refresh';

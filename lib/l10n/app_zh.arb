@@ -29,7 +29,7 @@
   "selectTargetAgent": "选择同步到的目标智能体",
   "openFolder": "打开目录",
   "selectSkill": "选择技能",
-  "uploadInstall": "上传安装",
+  "uploadInstall": "上传安装（.zip）",
   "refresh": "刷新",
   "noInstalledSkill": "暂无已安装技能",
   "totalCount": "总数 {count}",
