@@ -17,17 +17,16 @@ dart format --output=none --set-exit-if-changed . || error_exit "Code formatting
 
 # 2. Version handling
 if [ -n "$1" ]; then
-    NEW_VERSION=$1
+    # Strip any leading 'v's from the input
+    NEW_VERSION=$(echo "$1" | sed 's/^v*//')
     echo "🆙 Bumping version to $NEW_VERSION in pubspec.yaml..."
     # macOS sed handles -i differently, so we use a temporary file or a simpler approach
     sed -i '' "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml || error_exit "Failed to update version in pubspec.yaml"
 fi
 
-# Extract version from pubspec.yaml
-VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
+# Extract version from pubspec.yaml and ensure no leading 'v'
+VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1 | sed 's/^v*//')
 [ -z "$VERSION" ] && error_exit "Could not extract version from pubspec.yaml"
-# Strip 'v' prefix if present for uniform handling
-VERSION=${VERSION#v}
 echo "✅ Version to release: $VERSION"
 
 # 3. Build the app
@@ -102,19 +101,14 @@ git push origin "v${VERSION}" -f
 
 # 7. GitHub Release
 echo "🐙 Creating GitHub Release..."
-NOTES_FILE="release_notes.txt"
-echo "- [新增] 增强技能元数据提取功能" > "$NOTES_FILE"
-echo "- [优化] 提升界面语言的一致性，优化上传安装文案" >> "$NOTES_FILE"
-
 gh release view "v${VERSION}" >/dev/null 2>&1
 if [ $? -eq 0 ]; then
   echo "Release ${VERSION} already exists. Overwriting asset..."
-  gh release edit "v${VERSION}" --title "v${VERSION}" --notes-file "$NOTES_FILE"
+  gh release edit "v${VERSION}" --title "v${VERSION}"
   gh release upload "v${VERSION}" "$DMG_NAME" --clobber
 else
-  gh release create "v${VERSION}" "$DMG_NAME" --title "v${VERSION}" --notes-file "$NOTES_FILE"
+  gh release create "v${VERSION}" "$DMG_NAME" --title "v${VERSION}" --notes "Release version ${VERSION}"
 fi
-rm "$NOTES_FILE"
 
 # 8. Update Homebrew Tap
 echo "🍺 Updating Homebrew Tap..."

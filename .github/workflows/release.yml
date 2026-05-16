@@ -33,7 +33,7 @@ jobs:
       - name: Build Installer (Inno Setup)
         shell: pwsh
         run: |
-          $VERSION = (Get-Content pubspec.yaml | Select-String "version: " | ForEach-Object { $_.ToString().Split(": ")[1].Split("+")[0] })
+          $VERSION = (Get-Content pubspec.yaml | Select-String "version: " | ForEach-Object { $_.ToString().Split(": ")[1].Split("+")[0].Trim() -replace '^v+', '' })
           Write-Host "Detected Version: $VERSION"
           
           # 更新 .iss 文件中的版本号
@@ -85,7 +85,7 @@ jobs:
 
       - name: Create DMG
         run: |
-          VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
+          VERSION=$(grep '^version: ' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1 | sed 's/^v*//')
           ARCH="arm64"
           DMG_NAME="skill-lake-${VERSION}-${ARCH}.dmg"
           APP_PATH="build/macos/Build/Products/Release/Skill Lake.app"
