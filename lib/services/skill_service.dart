@@ -47,7 +47,8 @@ class SkillService {
     required AgentTarget agent,
   }) async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.any,
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
       withData: false,
     );
     if (result == null || result.files.isEmpty) {

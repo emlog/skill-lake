@@ -581,7 +581,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
         return AlertDialog(
           title: Text(l10n.selectTargetAgent),
           content: SizedBox(
-            width: double.maxFinite,
+            width: 600,
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: availableAgents.length,
