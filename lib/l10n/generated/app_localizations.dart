@@ -445,6 +445,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Load More'**
   String get loadMore;
+
+  /// No description provided for @visitHomepage.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit'**
+  String get visitHomepage;
+
+  /// No description provided for @sourceDescSkillsmp.
+  ///
+  /// In en, this message translates to:
+  /// **'skillsmp is an AI skill search engine for discovering Codex/Trae Agent skills from developers worldwide. Search and find the perfect skills for your workflow.'**
+  String get sourceDescSkillsmp;
+
+  /// No description provided for @sourceDescAnthropicSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Anthropic\'s official Claude Code Skills collection, featuring PDF, Excel, PowerPoint, and many practical skills for everyday development tasks.'**
+  String get sourceDescAnthropicSkills;
+
+  /// No description provided for @sourceDescObraSuperpowers.
+  ///
+  /// In en, this message translates to:
+  /// **'obra\'s Superpowers skill collection, offering a rich set of development helper skills to supercharge your coding experience.'**
+  String get sourceDescObraSuperpowers;
+
+  /// No description provided for @skillsShDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'skills.sh is a community platform for discovering and sharing AI agent skills. Browse hot skills, explore categories, and find the perfect skills for your workflow.'**
+  String get skillsShDescription;
+
+  /// No description provided for @skillsShVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit skills.sh'**
+  String get skillsShVisit;
 }
 
 class _AppLocalizationsDelegate

@@ -76,7 +76,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
   /// 从在线索引或缓存加载 Skill 列表
   Future<void> _loadStoreSkills({bool forceRefresh = false}) async {
     final SkillSource src = _currentSource;
-    if (src is SkillsmpSkillSource) {
+    if (src is SkillsmpSkillSource || src is SkillsDotShSource) {
       if (!mounted) {
         return;
       }
@@ -142,25 +142,126 @@ class _SkillStorePageState extends State<SkillStorePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         // 仓库源切换器
-        _SourceSwitcher(
-          sources: StoreService.builtInSources,
-          selectedIndex: _selectedSourceIndex,
-          onChanged: _onSourceChanged,
-          onRefresh: () => _loadStoreSkills(forceRefresh: true),
-          isRefreshing: _refreshing,
-          isLoading: _loading,
-          showRefresh: _currentSource is! SkillsmpSkillSource,
-          l10n: l10n,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _SourceSwitcher(
+            sources: StoreService.builtInSources,
+            selectedIndex: _selectedSourceIndex,
+            onChanged: _onSourceChanged,
+            onRefresh: () => _loadStoreSkills(forceRefresh: true),
+            isRefreshing: _refreshing,
+            isLoading: _loading,
+            showRefresh: _currentSource is GitHubSkillSource,
+            l10n: l10n,
+          ),
         ),
+        const SizedBox(height: 8),
+
+        // 源介绍通栏卡片
+        _buildSourceBanner(l10n),
         const SizedBox(height: 12),
 
         Expanded(
           child: _currentSource is SkillsmpSkillSource
               ? _buildSkillsmpLayout(l10n)
-              : _buildListOrStates(l10n),
+              : _currentSource is SkillsDotShSource
+                  ? _buildSkillsDotShLayout(l10n)
+                  : _buildListOrStates(l10n),
         ),
       ],
     );
+  }
+
+  /// 当前源介绍通栏卡片，展示简介与官网链接
+  Widget _buildSourceBanner(AppLocalizations l10n) {
+    final SkillSource src = _currentSource;
+    final String desc = _sourceDescription(l10n);
+    if (desc.isEmpty) return const SizedBox.shrink();
+
+    final ColorScheme color = Theme.of(context).colorScheme;
+    final TextTheme textTheme = Theme.of(context).textTheme;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      color: isDark ? color.surfaceContainerLow : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            Icon(
+              _iconForSource(src),
+              size: 28,
+              color: color.primary.withValues(alpha: 0.7),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    src.displayName,
+                    style: textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: color.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    desc,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: color.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            TextButton.icon(
+              onPressed: () async {
+                final Uri url = Uri.parse(src.homepageUrl);
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url);
+                }
+              },
+              icon: Icon(Icons.open_in_new, size: 16, color: color.primary),
+              label: Text(
+                l10n.visitHomepage,
+                style: TextStyle(color: color.primary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 根据源类型返回对应的介绍文案
+  String _sourceDescription(AppLocalizations l10n) {
+    final SkillSource src = _currentSource;
+    if (src is SkillsmpSkillSource) return l10n.sourceDescSkillsmp;
+    if (src is SkillsDotShSource) return l10n.skillsShDescription;
+    if (src is GitHubSkillSource) {
+      if (src.owner == 'anthropics' && src.repo == 'skills') {
+        return l10n.sourceDescAnthropicSkills;
+      }
+      if (src.owner == 'obra' && src.repo == 'superpowers') {
+        return l10n.sourceDescObraSuperpowers;
+      }
+    }
+    return '';
+  }
+
+  /// 根据源类型返回对应图标
+  IconData _iconForSource(SkillSource src) {
+    if (src is SkillsmpSkillSource) return Icons.search_rounded;
+    if (src is SkillsDotShSource) return Icons.language;
+    return Icons.inventory_2_outlined;
   }
 
   Widget _buildSkillsmpLayout(AppLocalizations l10n) {
@@ -259,6 +360,31 @@ class _SkillStorePageState extends State<SkillStorePage> {
     );
   }
 
+  /// Skills.sh 内容区域（介绍已由顶部通栏卡片承载）
+  Widget _buildSkillsDotShLayout(AppLocalizations l10n) {
+    final ColorScheme color = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            Icons.hub_outlined,
+            size: 48,
+            color: color.onSurfaceVariant.withValues(alpha: 0.25),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.skillsShVisit,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: color.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildListOrStates(AppLocalizations l10n) {
     final ColorScheme color = Theme.of(context).colorScheme;
 
@@ -298,7 +424,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
               ),
             ),
             const SizedBox(height: 16),
-            if (_currentSource is! SkillsmpSkillSource)
+            if (_currentSource is GitHubSkillSource)
               FilledButton.tonalIcon(
                 onPressed: () => _loadStoreSkills(forceRefresh: true),
                 icon: const Icon(Icons.refresh),
@@ -309,7 +435,7 @@ class _SkillStorePageState extends State<SkillStorePage> {
       );
     }
 
-    if (_currentSource is! SkillsmpSkillSource && _items.isEmpty) {
+    if (_currentSource is GitHubSkillSource && _items.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -485,6 +611,17 @@ class _SourceSwitcher extends StatelessWidget {
   final bool showRefresh;
   final AppLocalizations l10n;
 
+  /// 根据源类型返回对应图标
+  IconData _iconForSource(SkillSource src) {
+    if (src is SkillsmpSkillSource) {
+      return Icons.search_rounded;
+    }
+    if (src is SkillsDotShSource) {
+      return Icons.language;
+    }
+    return Icons.inventory_2_outlined;
+  }
+
   @override
   Widget build(BuildContext context) {
     final ColorScheme color = Theme.of(context).colorScheme;
@@ -518,7 +655,7 @@ class _SourceSwitcher extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     Icon(
-                      Icons.inventory_2_outlined,
+                      _iconForSource(src),
                       size: 14,
                       color:
                           selected ? color.onSurface : color.onSurfaceVariant,

@@ -92,5 +92,11 @@
   "skillsmpSettings": "Skillsmp 设置",
   "apiKeyHint": "设置您自己的 API Key 可以获得更多的搜索额度。",
   "getApiKey": "获取 API Key：",
-  "loadMore": "加载更多"
+  "loadMore": "加载更多",
+  "visitHomepage": "了解更多",
+  "sourceDescSkillsmp": "skillsmp 是一个 AI 技能搜索引擎，可以搜索来自全球开发者的 Codex/Trae Agent 技能，快速找到适合你工作流的技能。",
+  "sourceDescAnthropicSkills": "Anthropic 官方维护的 Claude Code Skills 合集，包含 PDF、Excel、PowerPoint 等丰富的实用技能。",
+  "sourceDescObraSuperpowers": "obra 维护的 Superpowers 技能合集，提供丰富的开发辅助技能，为你的编程体验增色。",
+  "skillsShDescription": "skills.sh 是一个发现和分享 AI Agent 技能的社区平台。在这里可以浏览热门技能、探索分类，找到适合你工作流的技能。",
+  "skillsShVisit": "访问 skills.sh"
 }

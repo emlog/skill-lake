@@ -12,6 +12,9 @@ abstract class SkillSource {
 
   /// 完整的显示名称
   String get displayName;
+
+  /// 官网地址
+  String get homepageUrl;
 }
 
 /// GitHub Skill 仓库源定义，包含仓库所有者、仓库名和 skill 子目录路径。
@@ -39,6 +42,10 @@ class GitHubSkillSource extends SkillSource {
   @override
   String get displayName => '$owner/$repo';
 
+  /// 官网地址（GitHub 仓库主页）
+  @override
+  String get homepageUrl => 'https://github.com/$owner/$repo';
+
   /// GitHub API：获取 skills 目录下的子目录列表
   String get contentsApiUrl =>
       'https://api.github.com/repos/$owner/$repo/contents/$skillsPath?ref=$branch';
@@ -59,6 +66,20 @@ class SkillsmpSkillSource extends SkillSource {
 
   @override
   String get displayName => 'skillsmp';
+
+  @override
+  String get homepageUrl => 'https://skillsmp.com/zh/search';
+}
+
+/// Skills.sh 源（介绍页面，非搜索源）
+class SkillsDotShSource extends SkillSource {
+  const SkillsDotShSource();
+
+  @override
+  String get displayName => 'skills.sh';
+
+  @override
+  String get homepageUrl => 'https://www.skills.sh/hot';
 }
 
 /// Skillsmp 搜索结果封装
@@ -131,6 +152,7 @@ class StoreService {
     SkillsmpSkillSource(),
     GitHubSkillSource(owner: 'anthropics', repo: 'skills'),
     GitHubSkillSource(owner: 'obra', repo: 'superpowers'),
+    SkillsDotShSource(),
   ];
 
   /// 获取缓存文件路径（按 owner/repo 区分）

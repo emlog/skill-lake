@@ -191,4 +191,26 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loadMore => '加载更多';
+
+  @override
+  String get visitHomepage => '了解更多';
+
+  @override
+  String get sourceDescSkillsmp =>
+      'skillsmp 是一个 AI 技能搜索引擎，可以搜索来自全球开发者的 Codex/Trae Agent 技能，快速找到适合你工作流的技能。';
+
+  @override
+  String get sourceDescAnthropicSkills =>
+      'Anthropic 官方维护的 Claude Code Skills 合集，包含 PDF、Excel、PowerPoint 等丰富的实用技能。';
+
+  @override
+  String get sourceDescObraSuperpowers =>
+      'obra 维护的 Superpowers 技能合集，提供丰富的开发辅助技能，为你的编程体验增色。';
+
+  @override
+  String get skillsShDescription =>
+      'skills.sh 是一个发现和分享 AI Agent 技能的社区平台。在这里可以浏览热门技能、探索分类，找到适合你工作流的技能。';
+
+  @override
+  String get skillsShVisit => '访问 skills.sh';
 }

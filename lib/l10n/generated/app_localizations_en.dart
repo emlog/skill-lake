@@ -194,4 +194,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loadMore => 'Load More';
+
+  @override
+  String get visitHomepage => 'Visit';
+
+  @override
+  String get sourceDescSkillsmp =>
+      'skillsmp is an AI skill search engine for discovering Codex/Trae Agent skills from developers worldwide. Search and find the perfect skills for your workflow.';
+
+  @override
+  String get sourceDescAnthropicSkills =>
+      'Anthropic\'s official Claude Code Skills collection, featuring PDF, Excel, PowerPoint, and many practical skills for everyday development tasks.';
+
+  @override
+  String get sourceDescObraSuperpowers =>
+      'obra\'s Superpowers skill collection, offering a rich set of development helper skills to supercharge your coding experience.';
+
+  @override
+  String get skillsShDescription =>
+      'skills.sh is a community platform for discovering and sharing AI agent skills. Browse hot skills, explore categories, and find the perfect skills for your workflow.';
+
+  @override
+  String get skillsShVisit => 'Visit skills.sh';
 }
